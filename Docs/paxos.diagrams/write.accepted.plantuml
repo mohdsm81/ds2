@@ -1,0 +1,137 @@
+@startuml write
+title
+Multi-Paxos Write Operation
+end title
+
+participant proposer
+collections replicas
+actor client
+
+note over of proposer: proposer is a replica too
+
+== Invocation Action(s)==
+client -> replicas: ProposeCommand(key,value)
+
+note over of proposer: Assuming Proposer is leader
+replicas -> proposer: Propose(key, value, client, WRITE)
+
+== Propose Action ==
+
+alt if instance is null
+    proposer -> proposer: - create new instance with new ProposalID\n- assign to latestInstance field
+end alt
+
+alt if instance is not in logs
+proposer -> proposer: - create an entry for this instance i.e.\n- logs(instance)= new Record(...)
+end alt
+
+proposer -> proposer: - instance = latestInstance.copy\n- instance.nextInstanceNum()\n- instance.nextProposalNumber()\n- broadcast Prepare(instance,value)
+
+
+proposer -> proposer: Prepare(instance,value)
+proposer -> replicas: Prepare(instance,value)
+
+== Prepare Action ==
+
+alt if instance >= latestInstance
+proposer -> proposer: same
+replicas -> replicas: latestInstance = instance.copy
+
+
+alt if instance is not in logs
+proposer -> proposer: same
+replicas -> replicas: logs(instance) = new Record(...)
+end alt "instance not in logs"
+
+proposer -> proposer: same
+replicas -> replicas: -localPid = latestInstance.pid
+alt if localPid == null OR instance.pid >= localPid
+
+proposer -> proposer: - promises += instance.pid\n- record = logs(instance)\n- record.promise(instance,value)
+
+' replicas -> replicas: 
+'note right of replicas
+'[For Ryan] do we really need to keep 
+'track of promises (set of pid's) on 
+'all replicas?! thinking of removing 
+'it from replicas and keeping it in 
+'leader only.
+' end note
+
+proposer --> proposer: Promise(instance, record.value)
+
+replicas --> proposer: Promise(instance, record.value)
+
+else both of them false
+
+proposer --> proposer: Nack(instance, higherPid,value)
+
+replicas --> proposer: Nack(instance, higherPid,value)
+
+end alt "localPid == ..."
+
+end alt "instance >= latestInstance"
+
+== Promise Action == 
+alt if logs contain instance
+proposer -> proposer: - logs(instance).promise(instance,value)
+
+alt if logs(instance).reachedQuorumPromise AND \nthis is leader
+proposer -> proposer: - remove instance.pid from promises\n- Broadcast accept message
+proposer -> proposer: Accept(instance, value)
+proposer -> replicas: Accept(instance, value)
+end alt
+
+end alt
+== Nack Action ==
+
+alt if this is leader AND proposingId isn't null AND\n higherPid > proposingId
+
+proposer->proposer: - logs(instance).nack(instance)
+alt if logs(instance).reachedNackMajority AND \ninstance == latestInstance
+
+proposer -> proposer: - copy = proposingPid.copy\n- copy.nextProposalNum(higherPid)\n- newInstance = instance.copy \n- newInstance.pid = copy\n- latestInstance = newInstance.copy\n- broadcast prepare message
+note right of proposer: we only make copy \nof proposal IDs and\n Instances to prevent \nmutating shared objects \nand mutating messages \n(throws the model off guards)
+proposer -> proposer: Prepare(newInstance,value)
+proposer -> replicas: Prepare(newInstance,value)
+
+end alt
+
+end alt
+== Accept Action ==
+
+alt if promises contain instance.pid
+proposer->proposer: localPid = instance.pid
+else otherwise
+proposer-> proposer: localPid = null
+end alt
+
+alt if localPid == null OR instance.pid >= localPid
+
+' proposer-> proposer: same
+' replicas-> replicas: - logs(instance).accept(instance,value) 
+
+
+
+proposer--> proposer: Accepted(instance,value)
+replicas--> proposer: Accepted(instance,value)
+
+
+end alt
+
+== Accepted Action ==
+alt if this is leader AND if instance >= latestInstance
+
+proposer->proposer: - logs(instance).accept(instance,value)
+
+alt logs(instance).reachedQuorumAccept
+
+proposer --> client: ClientWriteResponse(key,value)
+
+proposer->proposer: - learned(instance.key) = logs(instance).majorityValue\n- latestInstance = latestInstance.copy
+
+end alt
+
+end alt
+
+@enduml

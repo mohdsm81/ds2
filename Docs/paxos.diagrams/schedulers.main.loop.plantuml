@@ -1,0 +1,20 @@
+@startuml main-loop
+title Main Loop of Exhaustive Scheduler
+
+(*) -down-> "next Agent in RR order" as nextAgent
+nextAgent -down-> "capture the state of the system" as capture
+capture -down-> "get the agent's receive 'r'" as nextReceive
+nextReceive -down-> "mark 'r' explored (in the current state)" as markExplored
+markExplored -down-> "push a new state based on current one" as push
+push -down-> "remove 'r' from enabled set" as removeReceive
+removeReceive -down-> "append 'r' to schedule" as appendToSchedule
+appendToSchedule -down-> "perform 'r' (potential side effects)" as performReceive
+performReceive -down-> "lift new receives from ADT agents to enabled set" as liftReceives
+liftReceives -down-> "update schedule with responses if any (from clients queues)"
+
+if "enabled set has receives (non-empty)" then
+--> [YES] nextAgent
+else
+--> [NO] (*)
+
+@enduml

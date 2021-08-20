@@ -1,0 +1,993 @@
+Date updated: <2020-10-16 Fri>
+cutoff = 50K (100K for SR) 
+avg of 3 runs
+
+_NOTE:_ we ran IRed for over 203 hrs using the second harness (2r+2w)
+for the distributed register benchmark to see how much fewer schedules
+LV explores in comparison and it showed no sign of finishing so we had
+to kill it.
+
+* Dist. Register
+** Distributed Register - sub1[7/7]
+*** DONE EX - 2R + 1W
+    Harness Size: 3
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: ExhaustiveDFSScheduler
+    # of Schedules: 4200
+    # of Histories: 4200
+    Total Time to generate all schedules: 0:09
+    Total Time to generate all schedules (stateless): 0:07
+    # Unique Schedules: 4200
+    # of Unique Histories: 37
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:09
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 4195
+    Unique Histories to #Schedules ratio: 0.88%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE SR - 2R + 1W
+    Harness Size: 3
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: RandomScheduler
+    # of Schedules: 100000
+    # of Histories: 100000
+    Total Time to generate all schedules: 3:41
+    Total Time to generate all schedules (stateless): 1:11
+    # Unique Schedules: 100000
+    # of Unique Histories: 26
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 3:41
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 0
+    Unique Histories to #Schedules ratio: 0.03%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE DB - 2R + 1W
+    Harness Size: 3
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: DelayBoundedScheduler
+    # of Schedules: 4200
+    # of Histories: 4200
+    Total Time to generate all schedules: 0:09
+    Total Time to generate all schedules (stateless): 0:09
+    # Unique Schedules: 4200
+    # of Unique Histories: 37
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:09
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 4195
+    Unique Histories to #Schedules ratio: 0.88%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE DP - 2R + 1W
+    Harness Size: 3
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: DporScheduler
+    # of Schedules: 2984
+    # of Histories: 2984
+    Total Time to generate all schedules: 0:06
+    Total Time to generate all schedules (stateless): 0:07
+    # Unique Schedules: 2984
+    # of Unique Histories: 37
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:06
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 2979
+    Unique Histories to #Schedules ratio: 1.24%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE TD - 2R + 1W
+    Harness Size: 3
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: TransDporScheduler
+    # of Schedules: 2906
+    # of Histories: 2906
+    Total Time to generate all schedules: 0:06
+    Total Time to generate all schedules (stateless): 0:09
+    # Unique Schedules: 2906
+    # of Unique Histories: 37
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:06
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 2901
+    Unique Histories to #Schedules ratio: 1.27%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE IR - 2R + 1W
+    Harness Size: 3
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: IRedScheduler
+    # of Schedules: 2906
+    # of Histories: 2906
+    Total Time to generate all schedules: 0:05
+    Total Time to generate all schedules (stateless): 0:06
+    # Unique Schedules: 2906
+    # of Unique Histories: 37
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:05
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 2901
+    Unique Histories to #Schedules ratio: 1.27%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE LV - 2R + 1W
+**** After the tweak
+    _disabled_: readAck, readReplicaAck, writeAck, writeReplicaAck
+
+    Harness Size: 3
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 88
+    # of Histories: 88
+    Total Time to generate all schedules: 0:00
+    Total Time to generate all schedules (stateless): 0:00
+    # Unique Schedules: 88
+    # of Unique Histories: 22
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:00
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 83
+    Unique Histories to #Schedules ratio: 25.0%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+
+**** before symmetry harness tweak
+    produces exact numbers as IRed.
+
+** Distributed Register - sub2[7/7]
+*** DONE EX - 2R + 2W
+    Harness Size: 4
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: ExhaustiveDFSScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:35
+    Total Time to generate all schedules (stateless): 4:14
+    # Unique Schedules: 50000
+    # of Unique Histories: 8
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:35
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 0.02%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+
+*** DONE SR - 2R + 2W
+    Harness Size: 4
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: RandomScheduler
+    # of Schedules: 100000
+    # of Histories: 100000
+    Total Time to generate all schedules: 4:14
+    Total Time to generate all schedules (stateless): 1:52
+    # Unique Schedules: 100000
+    # of Unique Histories: 90
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 4:14
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 100000
+    Unique Histories to #Schedules ratio: 0.09%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE DB - 2R + 2W
+    Harness Size: 4
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: DelayBoundedScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:44
+    Total Time to generate all schedules (stateless): 5:16
+    # Unique Schedules: 50000
+    # of Unique Histories: 5
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:44
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 0.01%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE DP - 2R + 2W
+    Harness Size: 4
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: DporScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:41
+    Total Time to generate all schedules (stateless): 5:03
+    # Unique Schedules: 50000
+    # of Unique Histories: 8
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:41
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 0.02%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE TD - 2R + 2W
+    Harness Size: 4
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: TransDporScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:45
+    Total Time to generate all schedules (stateless): 4:37
+    # Unique Schedules: 50000
+    # of Unique Histories: 8
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:45
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 0.02%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE IR - 2R + 2W
+    Harness Size: 4
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: IRedScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:42
+    Total Time to generate all schedules (stateless): 5:03
+    # Unique Schedules: 50000
+    # of Unique Histories: 8
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:42
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 0.02%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+
+*** DONE LV - 2R + 2W
+**** DONE After the harness tweak
+    _disabled_: readAck, readReplicaAck, writeAck, writeReplicaAck
+    
+    Harness Size: 4
+    System Name: Distributed Register
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 7236
+    # of Histories: 7236
+    Total Time to generate all schedules: 0:11
+    Total Time to generate all schedules (stateless): 0:16
+    # Unique Schedules: 7236
+    # of Unique Histories: 147
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:11
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 7236
+    Unique Histories to #Schedules ratio: 2.03%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+
+**** DONE Before harness symmetry teak
+    Same as IRde
+* Err Distributed Register
+** Err Distributed Register - sub1[7/7]
+*** DONE EX - 2R + 1W
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: ExhaustiveDFSScheduler
+    # of Schedules: 1680
+    # of Histories: 1680
+    Total Time to generate all schedules: 0:28
+    Total Time to generate all schedules (stateless): 0:44
+    # Unique Schedules: 1680
+    # of Unique Histories: 93
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:28
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 1435
+    Unique Histories to #Schedules ratio: 5.54%
+    Buggy Histories to Schedules Ratio: 0.18%
+    Buggy to Unique Ratio: 3.23%
+    # Schedules till first bug: 2
+*** DONE SR - 2R + 1W
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: RandomScheduler
+    # of Schedules: 100000
+    # of Histories: 100000
+    Total Time to generate all schedules: 4:51
+    Total Time to generate all schedules (stateless): 2:16
+    # Unique Schedules: 100000
+    # of Unique Histories: 28
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 4:51
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 0
+    Unique Histories to #Schedules ratio: 0.03%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE DB - 2R + 1W
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: DelayBoundedScheduler
+    # of Schedules: 1680
+    # of Histories: 1680
+    Total Time to generate all schedules: 0:25
+    Total Time to generate all schedules (stateless): 0:40
+    # Unique Schedules: 1680
+    # of Unique Histories: 94
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:25
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 1453
+    Unique Histories to #Schedules ratio: 5.6%
+    Buggy Histories to Schedules Ratio: 0.18%
+    Buggy to Unique Ratio: 3.19%
+    # Schedules till first bug: 2
+*** DONE DP - 2R + 1W
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: DporScheduler
+    # of Schedules: 908
+    # of Histories: 908
+    Total Time to generate all schedules: 0:13
+    Total Time to generate all schedules (stateless): 0:17
+    # Unique Schedules: 908
+    # of Unique Histories: 82
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:13
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 771
+    Unique Histories to #Schedules ratio: 9.03%
+    Buggy Histories to Schedules Ratio: 0.66%
+    Buggy to Unique Ratio: 7.32%
+    # Schedules till first bug: 15
+*** DONE TD - 2R + 1W
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: TransDporScheduler
+    # of Schedules: 818
+    # of Histories: 818
+    Total Time to generate all schedules: 0:11
+    Total Time to generate all schedules (stateless): 0:15
+    # Unique Schedules: 818
+    # of Unique Histories: 79
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:11
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 684
+    Unique Histories to #Schedules ratio: 9.66%
+    Buggy Histories to Schedules Ratio: 0.24%
+    Buggy to Unique Ratio: 2.53%
+    # Schedules till first bug: 13
+*** DONE IR - 2R + 1W
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: IRedScheduler
+    # of Schedules: 802
+    # of Histories: 802
+    Total Time to generate all schedules: 0:10
+    Total Time to generate all schedules (stateless): 0:15
+    # Unique Schedules: 802
+    # of Unique Histories: 76
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:10
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 677
+    Unique Histories to #Schedules ratio: 9.48%
+    Buggy Histories to Schedules Ratio: 0.37%
+    Buggy to Unique Ratio: 3.95%
+    # Schedules till first bug: 36
+*** DONE LV - 2R + 1W
+**** DONE another tweak
+    _disabled_: readAck, and writeAck only because readReplicaAck (and
+    retries) can interfere with writeReplicaAck's.
+    _note_ this is exactly the same as no-harness-tweak results
+
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 802
+    # of Histories: 802
+    Total Time to generate all schedules: 0:10
+    Total Time to generate all schedules (stateless): 0:14
+    # Unique Schedules: 802
+    # of Unique Histories: 76
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:10
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 677
+    Unique Histories to #Schedules ratio: 9.48%
+    Buggy Histories to Schedules Ratio: 0.37%
+    Buggy to Unique Ratio: 3.95%
+    # Schedules till first bug: 36
+**** After harness tweaking (not good)
+    _disabled_: readAck, readReplicaAck, and writeAck
+    _not reliable_: readReplicaAck's (and subsequent retries due to
+    it) can interfere with write-related messaging including
+    writeReplicaAck's.
+
+    # Harness Size: 3
+    # System Name: distributed-register-majority-rw-FINAL-VERSION
+    # # of Agents: 2
+    # Scheduler: LiViolaScheduler
+    # # of Schedules: 113
+    # # of Histories: 113
+    # Total Time to generate all schedules: 0:01
+    # Total Time to generate all schedules (stateless): 0:01
+    # # Unique Schedules: 113
+    # # of Unique Histories: 40
+    # Time to Check all Unique Histories: 0:00
+    # Time to generate schedules and check unique histories (TT): 0:01
+    # Time to (including) first buggy unique history: 0:00
+    # # of Incomplete Histories: 83
+    # Unique Histories to #Schedules ratio: 35.4%
+    # Buggy Histories to Schedules Ratio: 2.65%
+    # Buggy to Unique Ratio: 7.5%
+    # # Schedules till first bug: 13
+
+**** Before harness tweaking
+    Harness Size: 3
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 802
+    # of Histories: 802
+    Total Time to generate all schedules: 0:10
+    Total Time to generate all schedules (stateless): 0:14
+    # Unique Schedules: 802
+    # of Unique Histories: 76
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:10
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 677
+    Unique Histories to #Schedules ratio: 9.48%
+    Buggy Histories to Schedules Ratio: 0.37%
+    Buggy to Unique Ratio: 3.95%
+    # Schedules till first bug: 36
+** Err Distributed Register - sub2[7/7]
+*** DONE EX - 2R + 2W
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: ExhaustiveDFSScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 343:20
+    Total Time to generate all schedules (stateless): 671:36
+    # Unique Schedules: 50000
+    # of Unique Histories: 148
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 343:20
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 49935
+    Unique Histories to #Schedules ratio: 0.3%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE SR - 2R + 2W
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: RandomScheduler
+    # of Schedules: 100000
+    # of Histories: 100000
+    Total Time to generate all schedules: 6:23
+    Total Time to generate all schedules (stateless): 3:40
+    # Unique Schedules: 100000
+    # of Unique Histories: 134
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 6:23
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 94954
+    Unique Histories to #Schedules ratio: 0.13%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE DB - 2R + 2W
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: DelayBoundedScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 336:53
+    Total Time to generate all schedules (stateless): 646:57
+    # Unique Schedules: 50000
+    # of Unique Histories: 129
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 336:53
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 49933
+    Unique Histories to #Schedules ratio: 0.26%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE DP - 2R + 2W
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: DporScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 609:09
+    Total Time to generate all schedules (stateless): 986:00
+    # Unique Schedules: 50000
+    # of Unique Histories: 262
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 609:09
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 49915
+    Unique Histories to #Schedules ratio: 0.52%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1    
+*** DONE TD - 2R + 2W
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: TransDporScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 681:07
+    Total Time to generate all schedules (stateless): 1110:09
+    # Unique Schedules: 50000
+    # of Unique Histories: 338
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 681:07
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 49894
+    Unique Histories to #Schedules ratio: 0.68%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE IR - 2R + 2W
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: IRedScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 649:28
+    Total Time to generate all schedules (stateless): 1052:18
+    # Unique Schedules: 50000
+    # of Unique Histories: 425
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 649:28
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 49843
+    Unique Histories to #Schedules ratio: 0.85%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DONE LV - 2R + 2W
+**** DONE another tweak
+    _disabled_: only readAck and writeAck ... expecting the same
+    results as without a tweak (yes it did).
+    
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 112:04
+    Total Time to generate all schedules (stateless): 183:14
+    # Unique Schedules: 50000
+    # of Unique Histories: 425
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 112:04
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 49843
+    Unique Histories to #Schedules ratio: 0.85%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1    
+    
+    
+**** DONE After the harness tweak
+    _disabled_: writeAck, readAck, readReplicaAck
+    _not reliable_: reason is readReplicaAck can interfere with both
+    the state and other write-related messaging such as
+    writeReplicaAck's.
+
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 10364
+    # of Histories: 10364
+    Total Time to generate all schedules: 69:07
+    Total Time to generate all schedules (stateless): 82:25
+    # Unique Schedules: 10364
+    # of Unique Histories: 474
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 69:07
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 10291
+    Unique Histories to #Schedules ratio: 4.57%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+
+**** DONE Before the harness tweak
+    Harness Size: 4
+    System Name: distributed-register-majority-rw-FINAL-VERSION
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 659:38
+    Total Time to generate all schedules (stateless): 1078:08
+    # Unique Schedules: 50000
+    # of Unique Histories: 425
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 659:38
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 49843
+    Unique Histories to #Schedules ratio: 0.85%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+* ZAB
+** ZAB - sub1
+*** EX - 2R + 1W
+
+*** SR - 2R + 1W
+
+*** DB - 2R + 1W
+
+*** DP - 2R + 1W
+
+*** TD - 2R + 1W
+
+*** IR - 2R + 1W
+
+*** LV - 2R + 1W
+
+** ZAB - sub2
+*** EX - 2R + 2W
+
+*** SR - 2R + 2W
+
+*** DB - 2R + 2W
+
+*** DP - 2R + 2W
+
+*** TD - 2R + 2W
+
+*** IR - 2R + 2W
+
+*** LV - 2R + 2W
+
+* PAXOS
+** PAXOS - sub1
+*** EX - 2R + 1W
+
+*** SR - 2R + 1W
+
+*** DB - 2R + 1W
+
+*** DP - 2R + 1W
+
+*** TD - 2R + 1W
+
+*** IR - 2R + 1W
+
+*** LV - 2R + 1W
+
+** PAXOS - sub2
+*** EX - 2R + 2W
+
+*** SR - 2R + 2W
+
+*** DB - 2R + 2W
+
+*** DP - 2R + 2W
+
+*** TD - 2R + 2W
+
+*** IR - 2R + 2W
+
+*** LV - 2R + 2W
+
+* OPEN-CHORD
+** OPEN-CHORD - sub1
+*** EX - 2R + 1W
+    Harness Size: 3
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: ExhaustiveDFSScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:33
+    Total Time to generate all schedules (stateless): 1:46
+    # Unique Schedules: 50000
+    # of Unique Histories: 222
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:33
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 0.44%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+
+*** SR - 2R + 1W
+    Harness Size: 3
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: RandomScheduler
+    # of Schedules: 100000
+    # of Histories: 100000
+    Total Time to generate all schedules: 4:42
+    Total Time to generate all schedules (stateless): 2:20
+    # Unique Schedules: 100000
+    # of Unique Histories: 34
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 4:42
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 0
+    Unique Histories to #Schedules ratio: 0.03%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DB - 2R + 1W
+    Harness Size: 3
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: DelayBoundedScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:24
+    Total Time to generate all schedules (stateless): 1:34
+    # Unique Schedules: 50000
+    # of Unique Histories: 222
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:24
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 0.44%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DP - 2R + 1W
+    Harness Size: 3
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: DporScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:39
+    Total Time to generate all schedules (stateless): 1:48
+    # Unique Schedules: 50000
+    # of Unique Histories: 197
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:39
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 42126
+    Unique Histories to #Schedules ratio: 0.39%
+    Buggy Histories to Schedules Ratio: 0.01%
+    Buggy to Unique Ratio: 3.05%
+    # Schedules till first bug: 6
+*** TD - 2R + 1W
+    Harness Size: 3
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: TransDporScheduler
+    # of Schedules: 10019
+    # of Histories: 10019
+    Total Time to generate all schedules: 0:49
+    Total Time to generate all schedules (stateless): 0:26
+    # Unique Schedules: 10019
+    # of Unique Histories: 113
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:49
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 5699
+    Unique Histories to #Schedules ratio: 1.13%
+    Buggy Histories to Schedules Ratio: 0.03%
+    Buggy to Unique Ratio: 2.65%
+    # Schedules till first bug: 7
+*** IR - 2R + 1W
+    Harness Size: 3
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: IRedScheduler
+    # of Schedules: 22920
+    # of Histories: 22920
+    Total Time to generate all schedules: 0:42
+    Total Time to generate all schedules (stateless): 0:21
+    # Unique Schedules: 22920
+    # of Unique Histories: 91
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:42
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 17126
+    Unique Histories to #Schedules ratio: 0.4%
+    Buggy Histories to Schedules Ratio: 0.01%
+    Buggy to Unique Ratio: 2.2%
+    # Schedules till first bug: 7
+*** LV - 2R + 1W
+    Harness Size: 3
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 236
+    # of Histories: 236
+    Total Time to generate all schedules: 0:01
+    Total Time to generate all schedules (stateless): 0:00
+    # Unique Schedules: 236
+    # of Unique Histories: 61
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:01
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 195
+    Unique Histories to #Schedules ratio: 25.85%
+    Buggy Histories to Schedules Ratio: 0.42%
+    Buggy to Unique Ratio: 1.64%
+    # Schedules till first bug: 5
+** OPEN-CHORD - sub2
+*** EX - 2R + 2W
+    Harness Size: 4
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: ExhaustiveDFSScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:19
+    Total Time to generate all schedules (stateless): 4:10
+    # Unique Schedules: 50000
+    # of Unique Histories: 2520
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:19
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 5.04%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** SR - 2R + 2W
+    Harness Size: 4
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: RandomScheduler
+    # of Schedules: 100000
+    # of Histories: 100000
+    Total Time to generate all schedules: 4:58
+    Total Time to generate all schedules (stateless): 2:52
+    # Unique Schedules: 100000
+    # of Unique Histories: 331
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 4:58
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 0
+    Unique Histories to #Schedules ratio: 0.33%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DB - 2R + 2W
+    Harness Size: 4
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: DelayBoundedScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:30
+    Total Time to generate all schedules (stateless): 3:45
+    # Unique Schedules: 50000
+    # of Unique Histories: 1263
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:30
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 2.53%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** DP - 2R + 2W
+    Harness Size: 4
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: DporScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:43
+    Total Time to generate all schedules (stateless): 4:21
+    # Unique Schedules: 50000
+    # of Unique Histories: 2248
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:43
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 4.5%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** TD - 2R + 2W
+    Harness Size: 4
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: TransDporScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:43
+    Total Time to generate all schedules (stateless): 3:04
+    # Unique Schedules: 50000
+    # of Unique Histories: 2914
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:43
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 5.83%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** IR - 2R + 2W
+    Harness Size: 4
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: IRedScheduler
+    # of Schedules: 50000
+    # of Histories: 50000
+    Total Time to generate all schedules: 1:39
+    Total Time to generate all schedules (stateless): 3:42
+    # Unique Schedules: 50000
+    # of Unique Histories: 2014
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 1:39
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 50000
+    Unique Histories to #Schedules ratio: 4.03%
+    Buggy Histories to Schedules Ratio: 0.0%
+    Buggy to Unique Ratio: 0.0%
+    # Schedules till first bug: -1
+*** LV - 2R + 2W
+    Harness Size: 4
+    System Name: OpenChord
+    # of Agents: 2
+    Scheduler: LiViolaScheduler
+    # of Schedules: 1015
+    # of Histories: 1015
+    Total Time to generate all schedules: 0:04
+    Total Time to generate all schedules (stateless): 0:04
+    # Unique Schedules: 1015
+    # of Unique Histories: 301
+    Time to Check all Unique Histories: 0:00
+    Time to generate schedules and check unique histories (TT): 0:04
+    Time to (including) first buggy unique history: 0:00
+    # of Incomplete Histories: 920
+    Unique Histories to #Schedules ratio: 29.66%
+    Buggy Histories to Schedules Ratio: 0.49%
+    Buggy to Unique Ratio: 1.66%
+    # Schedules till first bug: 0

@@ -1,0 +1,117 @@
+* DS2 Project Description
+DS2 stands for Declarative Specification of Distributed Systems. The
+advent of distributed systems in all scales, from clouds to IoT, lead
+for it to become mainstream. The lack of formal methods support added
+to both untrained mainstream developers and extreme difficulty of
+correctly designed distributed systems lead to the need for principled
+approaches to address the issue. DS2 tries to first address the
+correctness, testing and exploration aspects of distributed systems by
+providing practitioners with verification infrastructure and tools
+aiding them to build systems faster and with more correctness
+guarantees. In addition, the ultimate goal is to lift most, if not
+all, of the hurdles of distributed systems development from
+programmers shoulders and provide them with a full stack of domain
+specific language with all facilities they need to explore their
+systems and reason about them.
+* Branches description - Contribution
+  We have two long running branches, namely *development* and
+  *master*. The *master* branch will have the releases, while the
+  *development* branch (and branches from it) is where the active
+  development is being done.
+
+  All bugs fixes, features additions, issue resolving should be done
+  in short-lived branches then merged to the branch they are based
+  on. 
+
+  Branches are only merged into *development* branch when all their
+  dependent branches have been merged with them.
+
+  Only stable releases are merged to *master* and tagged accordingly. 
+
+  Other tags may exist for development and other branches, but avoid
+  collision with releases naming conventions, preferably just avoid
+  tags for development versions as they are easily spotted by a merge
+  from a properly named branch, e.g. ``local-state-dev''.
+
+  Short-lived branches also may continue and then merged later on
+  another time in case an issue is fixed.
+* How to
+
+This section explains how to setup your environment, build, and
+run/test ds2.
+
+** Get your environement ready (tools/prerequisite software)
+   Install [[http://www.scala-sbt.org/download.html][SBT]] (Simple Build Tool) according to the instruction on its
+   official page.
+
+   You can also install it from package managers e.g. [[https://www.macports.org/][MacPorts]] (for
+   macOS) or [[https://brew.sh/][Homebrew]].
+
+   +In addition, you will need to install [[https://www.graphviz.org/download/][graphviz]] and configure the
+   path variable of your operating system.+
+
+** Compile
+   After cloning ds2, cd into the cloned project and issue the
+   following command:
+   #+BEGIN_SRC shell
+   sbt compile   
+   #+END_SRC
+
+** Run Tests
+   To run all tests, simply issue the command 
+   #+BEGIN_SRC shell
+      sbt test
+   #+END_SRC
+
+** Run The Benchmarks
+   All benchmarks are stored as a =ScalaTest= suites. You can run each
+   using =sbt testOnly *<NameOfBenchmarkSuite>=. If you want to run
+   individual runs (i.e. specific harness and scheduler), then you
+   will have to refer to the =MicroAutoBenchmarks= under the package:
+   =edu.utah.cs.gauss.ds2.core.schedulers.algorithms.linearizability.benchmarks=.
+   We ran all benchmarks from IntelliJ IDE, so you can do the same as
+   well and even step through the scheduling algorithms for
+   understanding how they work.
+
+** Porting to DS2
+   You can look at the examples in the package =benchmarks= for
+   examples on how to port. 
+   Few tips to port:
+   - Your agent implementation better extends the DS2 =Agent= to have
+     all facilities ready. (just like you extend Akka Actor class)
+   - Define an action per message received and name it appropriately,
+     then add the mapping to the =reactions= of the =Agent= or create
+     a =Behavior= and enable it in the Agent.
+   - Use only /immutable/ data structures in the agent's
+     =localState=. If you have to use /mutable/ data structures, you
+     will have to make a fresh copy of each before mutating it, then
+     mutate it, then store it again in the local state. This is
+     crucial for correct operation of the DS2 model. The snapshotting
+     feature relies on the developer to do these copies manually, it
+     doesn't do it since it won't work as well.
+* Benchmarks
+  The following benchmakrs are the ones we test our tool on, links
+  provided next for convenience.
+** Links to Benchmarks
+   - OpenChord: [[https://bitbucket.org/onedash/akka-open-chord/src][Java+Scala]] and [[https://github.com/allenfromu/Open-Chord-Scala][Scala-only]] implementations (ported to DS2)
+   - [[https://github.com/allenfromu/Multi-Paxos-UDP][Paxos/MultiPaxos]] (it is ported to DS2)
+   - [[https://bitbucket.org/onedash/akka-zab/src][Zab]] (we ported it to DS2, but it may need debugging, we didn't
+     have enough time to include it in the paper)
+   - [[https://github.com/ktoso/akka-raft][Raft]] (we didn't find a bug-free version also)
+   - 3 different distributed registers in DS2.
+
+     All benchmarks can be found in the =benchmarks= package in DS2
+     project directory. For the ones ported from Akka, they still have
+     the original sources in the folders, or just clone the above
+     repositories accordingly.
+* People
+  - [[http://rstutsman.github.io/][Prof. Ryan Stutsman (Chair)]]
+  - [[http://www.cs.utah.edu/~ganesh/][Prof. Ganesh Gopalakrishnan (Co-Chair)]]
+  - [[https://sites.google.com/site/mohammedmahfoudh/][Mohammed S. Al-Mahfoudh (PhD - brain-father/maintainer)]]
+  - Heath French (MSc, Team - past contributor)
+  - Anushree Singh (MSc, Team - past contributor)
+  - Jarkko Savela (BSc, Team/Exchange-student - past contributor)
+  - Zepeng (Allen) Zhao (BSc, past contributor)
+* Related Links
+  - [[http://formalverification.cs.utah.edu/ds2/][Official Website]]
+  - [[http://formalverification.cs.utah.edu/][Utah Formal Verivication Group (Gauss)]]

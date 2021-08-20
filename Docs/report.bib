@@ -1,0 +1,246 @@
+@online{wikipage,
+title = {Futures and Promises},
+url = {https://en.wikipedia.org/wiki/Futures_and_promises},
+note = {\url{https://en.wikipedia.org/wiki/Futures_and_promises}, Retrieved Jan 31, 2016},
+urldate = {2015-10-10}
+}
+@article{ppp,
+author = {Rathbun, Spencer},
+title = {Parallel Processing with Promises},
+journal = {Queue},
+issue_date = {March 2015},
+volume = {13},
+number = {3},
+month = mar,
+year = {2015},
+issn = {1542-7730},
+pages = {10:10--10:18},
+articleno = {10},
+numpages = {9},
+url = {http://doi.acm.org/10.1145/2742694.2742696},
+doi = {10.1145/2742694.2742696},
+acmid = {2742696},
+publisher = {ACM},
+address = {New York, NY, USA}
+} 
+
+@misc{akka,
+key = {SC15-Repro-BOF},
+title = {TypeSafe},
+url = {\url{http://www.typesafe.com/activator/template/hello-akka}},
+note = {\url{http://www.typesafe.com/activator/template/hello-akka},Retrieved Jan 27, 2016}}
+
+@article{amazone-eventually-consistent,
+ author = {Vogels, Werner},
+ title = {Eventually Consistent},
+ journal = {Commun. ACM},
+ issue_date = {January 2009},
+ volume = {52},
+ number = {1},
+ month = jan,
+ year = {2009},
+ issn = {0001-0782},
+ pages = {40--44},
+ numpages = {5},
+ url = {http://doi.acm.org/10.1145/1435417.1435432},
+ doi = {10.1145/1435417.1435432},
+ acmid = {1435432},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+} 
+
+@article{sebastian-book,
+  author    = {Sebastian Burckhardt},
+  title     = {Principles of Eventual Consistency},
+  journal   = {Foundations and Trends in Programming Languages},
+  volume    = {1},
+  number    = {1-2},
+  pages     = {1--150},
+  year      = {2014},
+  url       = {http://dx.doi.org/10.1561/2500000011},
+  doi       = {10.1561/2500000011},
+  timestamp = {Wed, 26 Nov 2014 19:39:47 +0100},
+  biburl    = {http://dblp.uni-trier.de/rec/bib/journals/ftpl/Burckhardt14},
+  bibsource = {dblp computer science bibliography, http://dblp.org}
+}
+
+@Inbook{eventually-consistent-transactions,
+author="Burckhardt, Sebastian
+and Leijen, Daan
+and F{\"a}hndrich, Manuel
+and Sagiv, Mooly",
+editor="Seidl, Helmut",
+chapter="Eventually Consistent Transactions",
+title="Programming Languages and Systems: 21st European Symposium on Programming, ESOP 2012, Held as Part of the European Joint Conferences on Theory and Practice of Software, ETAPS 2012, Tallinn, Estonia, March 24 - April 1, 2012. Proceedings",
+year="2012",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="67--86",
+isbn="978-3-642-28869-2",
+doi="10.1007/978-3-642-28869-2_4",
+url="http://dx.doi.org/10.1007/978-3-642-28869-2_4"
+}
+
+
+@Comment I read this before, not in full support of Ev-Cons.
+@article{dont-settle-for-ev,
+  author    = {Wyatt Lloyd and
+               Michael J. Freedman and
+               Michael Kaminsky and
+               David G. Andersen},
+  title     = {Don't settle for eventual consistency},
+  journal   = {Commun. {ACM}},
+  volume    = {57},
+  number    = {5},
+  pages     = {61--68},
+  year      = {2014},
+  url       = {http://doi.acm.org/10.1145/2596624},
+  doi       = {10.1145/2596624},
+  timestamp = {Mon, 28 Apr 2014 15:22:28 +0200},
+  biburl    = {http://dblp.uni-trier.de/rec/bib/journals/cacm/LloydFKA14},
+  bibsource = {dblp computer science bibliography, http://dblp.org}
+}
+
+@TechReport {p-lang,
+abstract     = {<p>We describe the design and implementation of P, a domain-specific language to
+                write asynchronous event driven code.  P allows the programmer to specify the
+                system as a collection of interacting state machines, which communicate with each
+                other using events. P unifies modeling and programming into one activity for the
+                programmer. Not only can a P program be compiled into executable code, but it can
+                also be verified using model checking.  P allows the programmer to specify the
+                environment, used to “close” the system during model checking, as
+                nondeterministic ghost machines.  Ghost machines are erased during compilation to
+                executable code; a type system ensures that the erasure is semantics
+                preserving.</p>
+
+                <p>The P language is carefully designed so that we can check if the systems being
+                designed is responsive, i.e., it is able to handle every event in a timely
+                manner.  By default, a machine needs to handle every event that arrives in every
+                state. The default  safety checker looks for violations of this rule.  Sometimes,
+                handling every event at every state is impractical. The language provides a
+                notion of deferred events where the programmer can annotate when she wants to
+                delay processing an event.  The language also provides default liveness checks
+                that an event cannot be potentially deferred forever.  Call transitions (which
+                are like subroutines) are used to factor common event handling code, and allow
+                programmers to write complicated state machines.</p>
+
+                <p>P was used to implement and verify the core of the USB device driver stack
+                that ships with Microsoft Windows 8. The resulting driver is more reliable and
+                performs better than its prior incarnation (which did not use P), and we have
+                more confidence in the robustness of its design due to the language abstractions
+                and verification provided by P.</p>},
+author       = {Ankush Desai and Vivek Gupta and Ethan Jackson and Shaz Qadeer and Sriram
+                Rajamani and Damien Zufferey},
+month        = {November},
+number       = {MSR-TR-2012-116},
+title        = {P: Safe Asynchronous Event-Driven Programming},
+url          = {http://research.microsoft.com/apps/pubs/default.aspx?id=177118},
+year         = {2012},
+}
+
+@article{chord,
+ author = {Stoica, Ion and Morris, Robert and Liben-Nowell, David and Karger, David R. and Kaashoek, M. Frans and Dabek, Frank and Balakrishnan, Hari},
+ title = {Chord: a scalable peer-to-peer lookup protocol for internet applications},
+ journal = {IEEE/ACM Trans. Netw.},
+ volume = {11},
+ issue = {1},
+ month = {feb},
+ year = {2003},
+ issn = {1063-6692},
+ pages = {17--32},
+ numpages = {16},
+ url = {http://dx.doi.org/10.1109/TNET.2002.808407},
+ doi = {http://dx.doi.org/10.1109/TNET.2002.808407},
+ acmid = {638336},
+ publisher = {IEEE Press},
+ address = {Piscataway, NJ, USA},
+ keywords = {distributed scalable algorithms, lookup protocols, peer-to-peer networks},
+}
+
+@inproceedings{zookeeper,
+ author = {Hunt, Patrick and Konar, Mahadev and Junqueira, Flavio P. and Reed, Benjamin},
+ title = {{ZooKeeper: Wait-free Coordination for Internet-scale Systems}},
+ booktitle = {Proceedings of the 2010 USENIX Annual Technical Conference},
+ series = {USENIX ATC '10},
+ year = {2010},
+ location = {Boston, MA},
+ pages = {11--11},
+ numpages = {1},
+ url = {http://portal.acm.org/citation.cfm?id=1855840.1855851},
+ acmid = {1855851},
+ publisher = {USENIX Association},
+ address = {Berkeley, CA, USA},
+}
+
+@inproceedings{zab,
+    author = {Junqueira, Flavio P. and Reed, Benjamin C. and Serafini, Marco},
+    booktitle = {Dependable Systems \& Networks ({DSN}), 2011 {IEEE}/{IFIP} 41st International Conference on},
+    pages = {245--256},
+    publisher = {{IEEE}},
+    title = {{Zab: High-performance broadcast for primary-backup systems}},
+    year = {2011}
+}
+
+@inproceedings{chandra:paxos-live,
+ author = {Chandra, Tushar D. and Griesemer, Robert and Redstone, Joshua},
+ title = {{Paxos Made Live: An Engineering Perspective}},
+ booktitle = {Proceedings of the Twenty-sixth Annual ACM Symposium on Principles of Distributed Computing},
+ series = {PODC '07},
+ year = {2007},
+ isbn = {978-1-59593-616-5},
+ location = {Portland, Oregon, USA},
+ pages = {398--407},
+ numpages = {10},
+ url = {http://doi.acm.org/10.1145/1281100.1281103},
+ doi = {10.1145/1281100.1281103},
+ acmid = {1281103},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {Paxos, experiences, fault-tolerance, implementation},
+}
+
+@inproceedings {raft,
+author = {Diego Ongaro and John Ousterhout},
+title = {In Search of an Understandable Consensus Algorithm},
+booktitle = {2014 USENIX Annual Technical Conference (USENIX ATC 14)},
+year = {2014},
+month = Jun,
+isbn = {978-1-931971-10-2},
+address = {Philadelphia, PA},
+pages = {305--319},
+url = {https://www.usenix.org/conference/atc14/technical-sessions/presentation/ongaro},
+publisher = {USENIX Association},
+}
+
+@article{paxos,
+ author = {Lamport, Leslie},
+ title = {The Part-time Parliament},
+ journal = {ACM Transactions on Computer Systems},
+ issue_date = {May 1998},
+ volume = {16},
+ number = {2},
+ month = may,
+ year = {1998},
+ issn = {0734-2071},
+ pages = {133--169},
+ numpages = {37},
+ address = {New York, NY, USA},
+ keywords = {state machines, three-phase commit, voting},
+} 
+
+@article{paxos-simple,
+    address = {New York, NY, USA},
+    author = {Lamport, Leslie},
+    issn = {0163-5700},
+    journal = {SIGACT News},
+    keywords = {distributed-consensus, paxos},
+    month = dec,
+    number = {4},
+    pages = {51--58},
+    posted-at = {2011-05-24 14:30:35},
+    priority = {2},
+    publisher = {ACM},
+    title = {{Paxos Made Simple}},
+    volume = {32},
+    year = {2001}
+}

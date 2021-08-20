@@ -1,0 +1,5 @@
+package benchmarks
+
+object Systems extends Enumeration {
+  val DISTRIBUTED_REGISTER, ERR_DISTRIBUTED_REGISTER, ANOTHER_DISTRIBUTED_REGISTER, ZAB, PAXOS, RAFT, OPEN_CHORD = Value
+}

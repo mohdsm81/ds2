@@ -1,0 +1,59 @@
+
+* TODO Handle Agent.localState copy
+  Now it may contain distributed system specific (non safe to
+  serialize) objects.
+  - fix traceCopy of the agent to also take care of those objects
+  - fix "can not access future" problem *FIX FOLLOW*
+    now futures can be referred to by "variable" name in the local
+    state. Replace DS.resolve Future arg with future name. 
+    When ask executes on the original agent, it puts the "variable"
+    name in the temporary.localState("future") = variableName
+    
+    After that, if it is a resolving-send(), send() knows exactly
+    where to find the variable name in the "temp" so that it resolves
+    that future (if this is not already being handled by processing RF)
+
+* TODO remove the RESOLVE statement kind completely
+  - in Kind
+  - in generateStaticCode
+  - in generateDynamicCode
+  - in Statement.apply's
+  - OpSem report
+  - The new paper for Copy-Link
+
+* TODO remember what to do also
+
+* TODO Implement the additional (dynamic) Statement.apply methods
+  To create statements that refers to dynamically defined arguments
+* TODO Implement the NEW scheduler TaskQ and friends
+  - TaskQ
+  - ConsumeQ
+  - consumeONE(a:Agent)
+  - executeONE()
+    - This will introduce blocking manager management changes
+  - All of the above will need changes in copy() and link() of a
+    scheduler's state.
+* TODO Implement the control flow
+  Refer to weekly report to remember how to implement.
+  [[https://www.overleaf.com/4257675mxxwrc#/12605304/][LINK]], entry of week: 03/25/2016
+* ----------------------------------------
+
+* TODO Handling functions from user code
+  We may have:
+  - FUNCTION statment kind
+  - with, local-state (similar to Agent) for holding the local
+    variables and parameters of the function
+  - Questions:
+    - what about recursive functions
+    - How is that represented in the Statement? (sequence inside a
+      control-flow Statement that houses a stack and localstate
+      object?)
+    - LocalState of agents is accessible to it.
+      but also local variables of that functions are defined inside a
+      function.
+    - Stack is for the caller-callee return.
+      - Statement then will have a Stack that is only initialized for a
+        statement of type FUNCTION
+      - Stack+LocalState is called a FRAME (have to create a class to
+        support copy-link and traceCopy too)
+

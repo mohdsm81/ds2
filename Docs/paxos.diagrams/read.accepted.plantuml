@@ -1,0 +1,39 @@
+@startuml read
+title
+Multi-Paxos Read Operation 
+end title
+
+participant leader
+participant replica
+actor client
+
+== Read Invocation ==
+
+client -> replica: Request(key)
+== Request Action ==
+alt latestInstance == null 
+replica->replica:- latestInstance = new Instance(...)
+end alt
+
+replica->replica:- instance = latestInstance.copy\n- instance.operation = READ\n- value = null
+replica->leader: Prepare(instance, value)
+
+== Prepare Action (READ) ==
+alt if learned contains instance.key
+leader->leader: - value = learned(instance.key)
+else learned doesn't contain key
+leader->leader: - value = null
+end alt
+leader-->replica: Promise(instance,value)
+== Promise Action (READ) ==
+
+' replica->replica: - learned(instance.key) = value
+' note over replica: learn/cache the latest value
+
+alt if value == null
+replica->replica: value = ""
+note over replica: because WGL expects no value as ""
+end alt
+
+replica--> client: ClientReadResponse(instance.key,value)
+@enduml

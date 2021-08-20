@@ -1,0 +1,969 @@
+#+TODO: TODO IN-PROGRESS WAITING | THINKING DONE CANCELLED
+
+
+* IN-PROGRESS Paper[1/4]
+  - [-] re-formatting, correction and additions[7/13]
+    - [ ] non-linearizable sample history of the EDR
+      *note*: should we mention that schedules are also accessible?
+      yes, better
+    - [ ] please put one non-linearizable history into the eval
+      section (preferably in the same timeline format that we used in
+      the earlier examples)
+    - [ ] revise eval section (correct the errors)
+    - [ ] If any, indicate some discrepancies in numbers and explain.
+    - [ ] re-flow of the rest of paper
+    - [ ] Should we add Maryam's latest work as related? *YES*
+    - [X] remove =Zab= from the paper
+    - [X] change: five -> four, 5 -> 4 benchmarks
+    - [X] remove "front end" from the diagram
+    - [X] Changed table layout
+    - [X] full description of the dist. reg.[5/5]
+      - [X] Description: a leader is fixed, requests for writes/reads
+        are routed from receiving replicas to the leader. The leader
+        then initiates the requests and waits for majority
+        acknowledgments from the replicas. Once a majority is
+        received, it forwards it to the client that originally
+        submitted the request. For the write requests, the leader
+        writes its own k-v and then forwards it to replicas to do the
+        same. For the reads, it initiates a counter for how many of
+        the replicas return the same value for the same key and then
+        upon majority returning the value, they it sends a response to
+        the client for that read request with that majority-value. In
+        other words, all reads and writes are serialized through the
+        leader (even if they were initially submitted to replicas).
+      - [X] Agents: see the pseudo code
+      - [X] harness: the harness has 6 sections. The first specifying
+        the variable containing the initial state of the sequential
+        spec (inside the agent local state), and on the second line it
+        specifies whether it is a MAP or a SET (a register is a one
+        k-v map). The second section specifies the target agents
+        identifiers (or regexes of their identifiers) in order to
+        isolate them from other agents and synthetic clients in the
+        system. The third section specifies the start sequence, a
+        series of regular expressions per line, and each is optionally
+        followed by comma separated arguments. The Fourth section is
+        where the calls (reads, writes and their arguments) are
+        specified along with the mapping from the standard 'read' to
+        the name of the message representing the read request in the
+        system, and similarly for writes. The fifth section specifies
+        the mapping from a standard 'read'/'write' call to one or more
+        regexes representing the response message name(s). The sixth
+        section is provided specifically for LiViola to know which
+        messages are of interest to interleave, where the key lies in
+        the payload of these messages (if it is not known until
+        runtime, then a wild card of -1 can be provided), whether it
+        is a read-related/write-related/both message. The last is
+        where we provide the tweaks too. For the exact format of the
+        harness, please refer to the examples provided in the DS2
+        repo.
+      - [X] clients: empty agents without any behavior whatsoever. The
+        scheduler creates a client per request. That is, each client
+        submits one request in its lifetime, and receives at most one
+        response. The scheduler then picks these responses and
+        associates them with the invocations based on provided regexes
+        mapping these responses to the invocations/requests, provided
+        by the user in the harness file. Scheduler then takes a full
+        schedule and these mappings to extract histories as they
+        appear in the schedule.
+      - [X] include a pseudo code for it: 
+	#+BEGIN_SRC scala
+	  class DistRegAgent(id = 1) extends Agent(id){
+
+	    if(id == 1)
+	      be leader
+	    else leader = 1
+
+	    receiveMessage map{
+	      case x: IAmLeader =>
+		note who is leader
+
+	      case x:Write =>
+		if(this.isLeader){
+		  init write acks tracker with key, value, and client
+		  broadcast WriteReplica to peers
+		} else forward x to leader
+
+	      case x:Read =>
+		if(this.isLeader){
+		  init read acks tracker with key and locally stored value
+		  broadcast ReadReplica to peers
+		}else forward x to leader
+
+	      case x:WriteReplica =>
+		write x.value to register
+		send WriteReplicaAck(x.params) to x.sender
+
+	      case x:ReadReplica =>
+		val localValue = read local value
+		send ReadReplicaAck(x.params, localValue) to x.sender
+
+	      case x: WriteReplicaAck =>
+		update write tracker with x.params
+		if(reached majority acks)
+		  send WriteAck to x.client
+
+	      case x: ReadReplicaAck =>
+		update read tracker with x.params
+		if(reached majority acks)
+		  send ReadAck to x.client
+	    }
+	  }
+	#+END_SRC
+    - [X] make the dependence graph using yEd
+    - [X] Abstract rewriting *Ryan is better at it*
+  - [ ] Conclusion
+  - [ ] Recognition
+  - [X] Evaluation Section Data =>
+    - [X] Metrics:
+      - _NL/UH_: *QUALITY* of unique histories (that are effective at
+          catching a bug) 
+      - _UH/S_: *PROGRESSION* rough estimation/measure that the scheduler is
+        making progress exploring new schedules faster/slower
+      - _NL/S_: *PRECISION* of schedules generated that target bugs
+      - _UH_: *LESS-REPETITIVENESS* this is a rough estimation that the scheduler is
+        exploring more unexplored schedules before.
+      - _ST_: stateless (total rerun of the system) time to generate
+        all schedules. It is always bigger than stateful time except
+        in SR case, since the stateful involves restoring the state
+        of the system using the snapshot at the end of each
+        schedule, to start the next schedule while that isn't taken
+        into account in a stateless algorithm.
+      - All others are explained clearly at the footer of Table 1.
+    - [X] Eval introduction:[2/2]
+      - [X] SR is fastest but least effective (if at all) and given
+        twice as many schedules as threshold/cutoff.
+      - [X] It never found bugs, but always found good amount of
+        unique histories. So we won't include it in the comparison
+        with other algorithms, the user is free to check the numbers
+        instead.
+    - [X] Eval DR notes[3/3]
+      - [X] _EX + DB_: did a lot alike with negligible differences
+        on all aspects.
+      - [X] _DP+TD+IR_: did very similarly but definitely better
+        than EX+DB. IR and TD showed some improvement over
+        DP. However, IR didn't show any improvements over TD because
+        this implementation is strongly causally consistent, and
+        hence IR doesn't get an advantage over TD's
+        over-approximation of the root enabler, and hence TD
+        represents the worst case scenario for IR. This isn't always
+        the case as we will see in later benchmark(s).
+      - [X] _LV_: regardless of the fact that LV performance
+        numbers, theoretically speaking, should have been exactly
+        like IR since it is a one-key and LV shares the same precise
+        causality tracking with IR. LV enables the developer to
+        tweak the harness to indicate which messages are the focus
+        in the exploration (i.e. interfering with each other on the
+        shared target state, directly or indirectly) which lead to
+        astonishing numbers; it didn't even approach the cutoff on
+        the 4-invocations test. In this implementation the symmetric
+        replica acks to the leader (on both reads and writes) don't
+        cause any change at the leader nor cause further
+        interference before they are reported as a response to a
+        client in the final history. Developers should practice
+        caution using this feature as we will see why in the next
+        benchmark.
+    - [X] Eval EDR notes[3/3]
+      - [X] _EX+DB_: again they performed similarly as in the first
+        benchmark except for this one, there are bugs caught.
+      - [X] _DP+TD_: also did mostly the same except for few
+        differences on the 3 invocation test. DP produced better quality
+        unique histories to catch bugs as indicated by
+        NL/UH and it was more precise as indicated by NL/S but TD
+        was significantly faster at making progress towards unique
+        schedules (that potentially may reveal bgs) than DP.
+      - [X] _IR+LV_: IR and LV were the best of the algorithms in
+        this benchmark, also.  However they performed exactly the
+        same except LV for some reason scored much faster times than
+        IR. This is the theoretical upper bound for LV being IR that
+        we theorized.
+	*NOTE:* This specific benchmark, when we over tweaked the
+        harness, LV outperformed every one by a large margine in the
+        first 3-invocations test. However, when we used the same
+        over-tweaked harness for the second test, it missed all bugs
+        by a big margin and it pre-maturely terminated at a bit over
+        10K schedules stating it didn't find bugs. So, we reverted
+        these tweaks and passed a plain harness. This is an example
+        why developers should practice caution when tweaking the
+        harness fed to LV based on the logic of their implementation
+        and their insight into the problem at hand,
+        i.e. linearizability checking.
+    - [X] Eval OpenChord: left for reader to infer from the table
+      - [X] Eval Paxos:left for reader to infer from the table
+      - [X] Eval Zab:left for reader to infer from the table
+
+
+	
+* WAITING Dissertation [2/7]
+  - [X] cleaning
+  - [X] Preliminary Review
+  - [ ] add new chapter/paper
+  - [ ] multi-author release forms
+  - [ ] Published Work permission (3rd paper)
+        if published in cav, no need
+  - [ ] Committee Approval Form
+  - [ ] Submit to Thesis Office for final review and ProQuest
+    publishing
+
+
+
+
+* DONE Ryan's notes for the paper (Eval and others)
+  At the outset of the eval section, we need a full description of the
+  distributed register including the agents and the
+  harness/client. My recommendation here is to include psuedocode
+  for the distributed register case.
+
+  Delete the paragraph about which schedulers we test with. Just
+  mention that we test each of these systems with the algorithms
+  from the previous section.
+
+  "In addition, to account for noise and increase the confidence of
+  the results, and although results rarely varied and extremely
+  insignificantly between single runs, we ran each test three times
+  and averaged the aggregate to report the results." I don't
+  understand why the results would be non-deterministic aside from the
+  run times.
+
+  "HL/UH" these abbreviations need to be spelled out in the body text.
+
+  Do we think that 2r+2w will produce interesting result in any of the
+  cases? I wonder if we should have a table per system and only show
+  the 2r+2w results for the the distributed register case, and then
+  omit it from the rest of the results saying that it always times out
+  in all cases without finding bugs.
+
+  Related to that I think it would be helpful to invert Alg and
+  harness in the table. That is, I think it would be easier to draw
+  conclusions if the 2r+1w took of the left side of the page, and
+  there were an EX, SR, ... column within that left side. Then there
+  would be the same for the right side:
+
+  | 2r+1w                            | 2r+2w                            |
+  |----------------------------------|----------------------------------|
+  | EX | SR | DB | DP | TD | IR | LV | EX | SR | DB | DP | TD | IR | LV |
+  |----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  |
+
+  Please put one of the non-linearizable histories into the eval
+  section, preferably in the same timeline format that we used in the
+  earlier examples.
+
+
+
+* DONE Meeting <2021-01-13 Wed>, <2021-01-15 Fri> [3/5]
+  - [X] The loop fixed: two problems:
+    - double capture (some effects in previous states): in DFSState
+      creation, and after executing a receive (side effects)
+    - the place of capture, now is only at the beginning of the loop's
+      first branch, the last iteration of the loop doesn't capture the
+      state since when backtracked first (i.e. discarded first-- we
+      only capture the state when we will back track to it)
+    - *better performance!* since capturing the state is the slowest
+      thing in the entire loop.
+  - [X] OC has all its histories involving a write or more
+    *incomplete*. executing =UploadEntry= receive by the
+    =uploadEntryAction= then lifting... leads to adding back (again)
+    the same upload entry sent by the client. It does /not/ send an
+    upload entry from the action, it just adds the same receive from
+    the client again to the enabled set! and since the =exploredSet=
+    is empty in the next (already pushed) state is empty... then it
+    doesn't get filtered out. *FIXED* lifting the start-action
+    generated receives before starting the loop fixed it.
+  - [X] Paper todo
+    - non-linearizable sample history of the EDR
+      *note*: should we mention that schedules are also accessible?
+      yes, better
+    - revise eval section (correct the errors)
+    - If any, indicate some discrepancies in numbers and explain.
+    - Abstract rewriting
+    - re-flow of the rest of paper
+    - Should we add Maryam's latest work as related?
+    - 
+  
+  _Items from old meeting just as a *todo* for me_
+  - [ ] How to remove big unneeded files from the repo (Jepsen's traces)
+  - [ ] Making Docker image is piece of cake: [[https://www.reddit.com/r/docker/comments/3ctm16/how_do_you_convert_an_lxc_container_to_a_docker/][LINK]]
+  
+* DONE Long task list [8/8]
+
+  - [X] debug EX main loop[5/5]
+    It is the reason we see all these incomplete histories. It could
+    be any of the following:
+    - [X] OC: on 3-receives harness... EX is correct, it produces only
+      complete histories. HOWEVER, the results reports all of them
+      incomplete! there must be something wrong with the methods in
+      =BenchmarkResults= or in =Event.isComplete(hist)=
+
+    - [X] *Main suspicion* a two invocations schedule/history only!
+      without any other thing with them?! /not a single implementation
+      works/behaves this way./ I think it is the snapshots it takes
+      that are cross-mutated *so far this is the case with Paxos and OpenChord!*
+      - [X] PX mutation inside a localstate, YES this was ONE reason only
+      - [X] OC mutation inside a localstate, YES this was ONE reason only
+    - [X] A set gets computed wrong *not this one*
+    - [X] a capture that is too early *not this one*
+    - [X] not removing already executed receive from some one's queue *not this one*
+      
+  - [X] Paxos[7/7]
+    - [X] test [8/8]
+      - [X] more incomplete histories but no vanishing of receives
+        (must be Paxos specific)
+
+	- [X] SR and RR do they suffer same main-loop bug(s)? *NO!*
+
+	- [X] Use SR for debugging paxos and OpenChord
+
+	- [X] Once OC and PX are debugged... use them for debugging
+          the _main loop_.
+
+	- [X] Last, check it out with the 2R+2W harness too
+
+      - [X] All remaining incomplete histories are just TWO WRITE
+        responses to the client?! (this *definitely* a bug in the
+        paxos implementation itself, not the main loop)... same could
+        be for all other algorithms mentioned below.
+
+	and _BINGO_: the main problem if vanishing receives was
+        Message.equals override! I removed it.
+
+      - [X] Incomplete histories when there is even 1 write. This
+        actually could be related to the Snapshotting problem below.
+	1. OpenChord, should NEVER have incomplete histories
+
+	2. Linearizable Register (should never have incomplete
+           histories)
+
+	3. Paxos should NEVER have incomplete histories
+
+	4. ONLY EDR will have incomplete histories.
+
+      - [X] *Problem*: what ever mutates inside an object stored
+        inside key/value of localState doesn't get copied (as in full
+        copy, just referenced in LocalStateState), so the state
+        escapes capturing.
+	*Solutions*: Two possible solutions:
+	1. _best_ Copy these objects, and store a modified copy each time
+           before you mutate. (src level of an agent)
+
+	2. _not great_ Change the implementation of Snapshot to make full copy
+           (slow and risky, since we have to care for recursive
+           references...etc)
+
+	3. _HARD and makes code ugly_ Use only immutable objects
+      - [X] =logs(instance)= check if it contains the
+        =proposedInstance= and if it doesn't add it! It does have it
+        but with an incremented =instanceNum= and an incremented
+        =proposalNum=. Which confirms the snapshotting problem.
+        *Solution:* only use immutable things inside Agent.localState,
+        and mutable things used, make copies of them before you modify
+        them and store them again.
+
+      - [X] _THIS is the problem_ backtracking doesn't
+        quiet undo all effects! Am I using the model strictly to store
+        things? YES, but snapshotting could me NOT doing all it can
+        (doesn't fully copy keys of maps, it only copies values...)
+        *check that out*
+	- _NOTE_: this is the actual problem. It relies on "immutable"
+          k-v in the LocalState object so that it works
+          correctly. Otherwise, a major refactoring of the
+          snapshotting feature maybe required which is a NO NO, for
+          now. 
+      - [X] print the incomplete schedule (it
+        is idx==13 that is incomplete)
+	#+BEGIN_SRC scala
+	  ds.scheduler.asInstanceOf[ExhaustiveDFSScheduler].benchmarkStatistics.schedules.size >= 12
+	#+END_SRC
+      - [X] re-write it in cleaner way (he was using too many things
+      that don't actually work)
+    - [X] WRITE acceptance flow
+    - [X] nackAction impl
+    - [X] READ variants of the actions impl[3/3]
+      - [X] requestAction
+      - [X] prepareAction
+      - [X] promiseAction
+    - [X] Instance.equals re-implementation (not all fields are needed
+      to identify proposals)
+    - NOTES:[2/2]
+      - [X] Why prepareAction reads from "logs" instead of
+        "learned_values"? Yes, logs are in-progress WRITE
+        requests. for READ's, learned_proposals are read =Map[key->
+        value]=
+      - [X] still need to do the READ part of "prepareAction" and
+        "promiseAction"
+    - [X] start sequence
+    - [X] makeHarnessFile impl [2/2]
+      - [X] Read: =Reques= (first phase)
+      - [X] Write: =ProposeCommand= (two phases)
+  - [X] Open Chord[5/5]
+    - [X] makeHarnessFile impl [NEW][2/2]
+      - [X] =UploadEntry(x:Entry)= where =UploadEntry(id1: ID, k:
+        String, v: Serializable)= is =Message("UploadEntry", Seq(k,v))=
+      - [X] =Request(r:Request)= where =Request(node: Node, id:String,
+        key: ID)= is =Message("Request", Seq(k))=
+    - [X] makeHarnessFile impl
+      - use =val id = HashFunction.createID(k.getBytes)= where =k= is
+        for =ThisRequest(... id...)= and use
+        =ChordImpl.makeRequestID()= for =Request(...reqID...)=
+      - [X] =UploadEntry(x:Entry)= where =UploadEntry(id1: ID, k: String, v: Serializable)=
+      - [X] =ThisRequest(r:Request)= where =ThisRequest(node: Node, id:String, key: ID)=
+      - NOTES: 
+	create an =Entry= with id = HashFunction.createID(key) (from
+        Main.scala). 
+
+       *Problem1:* On the text level (harness file) just paste the
+        rest of the message payload to be the =Array[Byte]= that
+        represents the id1 field of =ID= class. In the reaction, take
+        the tail after the =k= and =value= and create a runtime =ID=
+        instance. Use that instead of accessing the direct =Message=
+        created by the harness/scheduler. This way we lift a bench of
+        bytes into =Array[Byte]= and in turn into =ID=. Wrap the
+        =Entry= that is created and send it to the agent as
+        =UploadEntry(e:Entry)=. Do the same for =ThisRequest(req:
+        Request(node,id:String,key:ID))= except that Request.id is a
+        string generated by this code:
+	#+BEGIN_SRC scala
+	private def makeRequestID():String = System.currentTimeMillis().toString() +"_"+counter
+	// like the following
+	var reqID = makeRequestID()
+	val req = new Request(this.localNode, reqID, key)
+	#+END_SRC
+
+	_Another idea (will have to write some code to generate
+        that)_: create all that programatically, serialize to bytes,
+        then parse these bytes to a full object message! (use the IO._
+        functions) before even you launch the scheduler... that is,
+        put the bytes in the harness itself... as the payload of
+        =UploadEntry= and =ThisRequest=.
+
+	*Problem2:* responses accumulate at the requesting agent.
+
+	*Better soln for both problems 1 & 2:* use regular k-v at the
+        harness level, and let the actions in the actors to deal with
+        creating ID's per request. Also, add a method
+        Responses.receive(....) that maps the original client & key
+        they requested (and value in case of a write) that sent the
+        request with the ID generated so that a proper Response is
+        sent out to the client to form a complete history. Same goes
+        for "entries" written of course (the table). When it is
+        written, the client has to be notified.	
+    - [X] Start sequence[1/1]
+      - [X] _Joining_: =FindSuccessor(localNode,remoteNode)=
+	*Notes:* [[https://medium.com/techlog/chord-building-a-dht-distributed-hash-table-in-golang-67c3ce17417b][src]]. The following tasks should be done for a newly
+        joined node:
+	1. Initialize node n (the predecessor and the finger table).
+	2. Notify other nodes to update their predecessors and finger
+           tables.
+        3. The new node takes over its responsible keys from its
+           successor.
+	   
+	*The stabilization protocol works as follows:* To ensure
+        correct lookups, all successor pointers must be up to
+        date. Therefore, a stabilization protocol is running
+        periodically in the background which updates finger tables and
+        successor pointers.
+
+	1. =Stabilize()=: n asks its successor for its predecessor p and
+           decides whether p should be n‘s successor instead (this is
+           the case if p recently joined the system).
+	2. =Notify()=: notifies n‘s successor of its existence, so it
+           can change its predecessor to n
+	3. =Fix_fingers()=: updates finger tables/*
+	4. *no need* check_predecessor(): Periodically checks if
+           predecessor is alive
+    - [X] flatten the following messages and their reactions[2/2]
+      - [X] =UploadEntry(x:Entry)= => UploadEntry(id1: ID, k: String, v: Serializable)
+      - [X] =ThisRequest(r:Request)= => ThisRequest(node: Node, id: String, key: ID)
+    - [X] make a global var in agent call it "spec$$Map[Any,Any]" to
+      represent "entries" (this is the initial SPEC, which is
+      empty). There is a note with this regard in *ChordDS2System*.      
+
+
+  - [X] improve algorithm input(s)[3/3]
+    - [X] Improve parsing the harness to indicate a wild card for keys
+      locations (and consider that wild card includes ALL keys)
+    - [X] add one more map/set to indicate an overlap of a
+      "r/w"-related messaging (like it is the case with Paxos) use "b"
+      for "both". Also, add that parsing support to the file
+      harness-parser
+    - [X] re-enable one-is-a-write condition and test it (can disable
+      in case it lead to missed bugs)
+  - [X] NEW Register implementation[3/3]
+    - [X] re-run the two benchmark rows[8/8]
+      should I use 3 or 2 runs instead of 5? *3 times each*
+      - [X] 3 receives EDR
+      - [X] 4 receives EDR
+      - [X] 3 receives DR -- after fixing the harness tweak
+      - [X] 4 receives DR -- after fixing the harness tweak
+      - [X] Repeat 3 receives DR  - LV with no-acks shuffling harness
+      - [X] Repeat 3 receives EDR - LV with no-acks (except the write
+        ack since it does affect the target state in the
+        leader/originator) shuffling harness
+      - [X] Repeat 4 receives DR  - LV with harness tweaks
+      - [X] Repeat 4 receives EDR - LV with harness tweaks
+    - [X] Debug the casting exceptions
+    - [X] Debug the weird bugs[4/4]
+      - [X] FIX the ReadReplica to be sent to have the client in the payload if
+        originally forwarded by the other peers
+      - [X] Fix the "reachedMajority", it could be too strict to have
+        gt. It works, wasn't broken.
+      - [X] fix the *trackersContain(mm.client, write = false)*
+        returning false when it should return true. *BECAUSE* there is
+        NOTHING in the *READS_TRACKER* map!!! *ALSO: the bug wasn't
+        this*, see next item.
+      - [X] the readAcktion was adding trackers to the
+        *WRITES_TRACKER* map. Fix: now read action adds to
+        *READS_TRACKER* map.
+  - [X] Dist. Reg.[5/5]
+    - [X] msgReadReplicaAck 
+      doesn't have a "key" in the payload, no wonder LV misses bugs!!!
+    - [X] run and see if LV finds bugs
+
+      *the 3-receives harness results*
+      Harness Size: 3
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: LiViolaScheduler
+      # of Schedules: 146
+      # of Histories: 146
+      Total Time to generate all schedules: 0:00
+      Total Time to generate all schedules (stateless): 0:02
+      # Unique Schedules: 146
+      # of Unique Histories: 7
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 0:00
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 146
+      Unique Histories to #Schedules ratio: 4.79%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+      
+      *the 4-receives harness results:*
+      hits the 50K cut off and finds no bugs
+    - [X] Copy that and reduce the quorum to form the buggy one
+    - [X] Debug - make linearizable: Just adding the key "k" to the
+      msgReadReplicaAck fixed it (made the alg count things correctly)
+      
+      *The three receives harness results:*
+
+      Harness Size: 3
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: ExhaustiveDFSScheduler
+      # of Schedules: 1680
+      # of Histories: 1680
+      Total Time to generate all schedules: 0:05
+      Total Time to generate all schedules (stateless): 0:19
+      # Unique Schedules: 1680
+      # of Unique Histories: 16
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 0:05
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 1680
+      Unique Histories to #Schedules ratio: 0.95%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+
+      *and the 4-receives harness results:*
+      Harness Size: 4
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: ExhaustiveDFSScheduler
+      # of Schedules: 50000
+      # of Histories: 50000
+      Total Time to generate all schedules: 16:17
+      Total Time to generate all schedules (stateless): 41:45
+      # Unique Schedules: 50000
+      # of Unique Histories: 31
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 16:17
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 50000
+      Unique Histories to #Schedules ratio: 0.06%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+    - [X] Debug again 
+      
+      _Reason_: all histories are incomplete!  *fixed and now it is NOT
+      linearizable* since now there are retries.
+
+      _NOTES_: In the Dist. Reg. Benchmarks, LiViola shouldn't exceed
+      IRed, at least not by much if any. (single key). In the other
+      benchmarks however (since they are capable of multi-key), it
+      could exceed all of them by a significant margin (say two writes
+      to diff keys, and the reads to one key to reveal
+      violations... this is more like the 3-receive thing).      
+  - [X] Micro Auto Benchmarks, add [3/3]
+    - [X] Paxos
+    - [X] OpenChord
+    - [X] Zab
+  - [X] Model[2/2]
+    - [X] debugging If-elseif-else: make sure each case skips the rest
+    - [X] add support to Behavior to receive a message and discard it:
+      by returning an empty Action instead of throwing an exception
+
+* DONE Debugging paxos data
+
+** DONE RR 2R+2W
+*** schedule # ---
+
+   *Notes:* I know what is happening. 
+   When the second request (k20->20) is processed by leader: 
+   1. it either overwrites k1's instance OR it is the latest proposal
+      (but both proposal numbers are just... 1)
+   2. Since there is no nack/retry being invoked... one transaction
+      gets to finish, the other forgotten forever.
+
+   *Problems*
+    1. [X] One key?! 
+       - *THIS IS THE REASON, FIXED*: =proposeAction= wasn't creating
+         a new instance for the new propose requests.
+       - SR sees them and receives are correct at the agents' queues.
+       - Could be Paxos (using same hash Instance) replacing one
+         instance with another at the leader.
+    2. [ ] one promise is lost?  
+       Do the two writes step on each other's foot and overwrite each 
+       others =latestInstance=? _I think Yes_, the latest one does win 
+       the race, in this case the write to k1. 
+       _Ryan says_: proposal number is just a lamport clock! each agent
+       maintains the latest clock it has received.
+
+       _Me_: so an agent only increments
+       its proposal number (latest-instance-proposalNum/lamport clock)
+       upon majority-nack specific to that instance (always retrieved
+       from the =logs= ).
+    3. [X] not a single nack? (could be an issue or not), fixed now
+       there is a =Nack=
+    4. [ ] no second =ClientWriteResponse=
+
+   *Fixes*:
+   1. [X] Add a field to =Record=, and rename the =totalAcks=. Now we
+      should have two fields: =prepareAcksReceivedCount= and
+      =acceptAcksReceivedCount= use each for each phase.
+   2. [X] We should have =Record.reachedPrepareAcksLimit= and
+      =Record.reachedAcceptAcksLimit=. Acks can be promise or nack for
+      the first, and can be only accepted for the second. Hence, we
+      don't need to count the second nor the second field,
+      =acceptAcksReceivedCount=. and Hence we don't need it! just
+      rename the first one to =prepareAcksCount=.
+   3. [X] By the time =prepareAcksCount == peersCount= or
+      =Record.reachedMajorityNacks=, it retries (incrementing both proposal
+      and instance numbers and sending =Prepare= to peers), otherwise
+      if =reachedMajorityPromise= send accept.
+   4. *Loop related*: I think we should have a single capture, remove
+      the auto snapshot at the creation of the state, and capture the
+      state only after making all side effects. Because, making few
+      side effects, then pushing a new state, causes partial effects
+      captured and hence can't restore to previous state since it is
+      completely corrupted. Also, it makes algorithms run much
+      faster.
+
+
+** DONE Random Scheduler + Paxos
+*** complete and correct schedule # 0
+    (Request( sender = IRed1, method = false, payload: WrappedArray(k1)),2)
+    (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+    (Request( sender = IRed2, method = false, payload: WrappedArray(k1)),1)
+    (Prepare( sender = 2, method = false, payload: List(Instance(IRed1,k1,2,READ,2), k1, null)),1)
+    (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+    (Prepare( sender = 1, method = false, payload: List(Instance(IRed2,k1,1,READ,2), k1, null)),1)
+    (Promise( sender = 1, method = false, payload: List(Instance(IRed1,k1,2,READ,2), k1, null)),2)
+    (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+    (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (ClientReadResponse( sender = 2, method = false, payload: List(k1, )),IRed1)
+    (Promise( sender = 1, method = false, payload: List(Instance(IRed2,k1,1,READ,2), k1, null)),1)
+    (ClientReadResponse( sender = 1, method = false, payload: List(k1, )),IRed2)
+    (Promise( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+    (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (ClientWriteResponse( sender = 1, method = false, payload: List(k1, 10)),IRed0)
+*** incomplete schedule # 2
+    (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+    (Request( sender = IRed1, method = false, payload: WrappedArray(k1)),2)
+
+    (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+    (Prepare( sender = 2, method = false, payload: List(Instance(IRed1,k1,2,READ,2), k1, null)),1)
+    (Request( sender = IRed2, method = false, payload: WrappedArray(k1)),1)
+    (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+    (Promise( sender = 1, method = false, payload: List(Instance(IRed1,k1,2,READ,2), k1, 10)),2)
+    (ClientReadResponse( sender = 2, method = false, payload: List(k1, 10)),IRed1)
+    (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, null)),1)
+    (Nack( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), 2, k1, 10)),1)
+    (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+    (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, null)),1)
+** CANCELLED Paxos itself
+
+
+   *sch: 5 same for 6, and 7 too* 
+   (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+   (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+   (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+   (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Promise( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+   (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+   (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   _why just one =Promise= and 3x =Accept= and =Accepted=?_
+
+
+   *sch: 8*
+   (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+   (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+   (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+   (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Promise( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+
+   (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+
+   (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   _complete but why additional =Accept=?_
+  
+   *sch: 9*
+   (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+   (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+   (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+   (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Promise( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+   (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+   (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+   (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+   (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+  
+** CANCELLED The main algorithm loop bug data  
+  _NOTE_: there is definitely a big either in the main loop, or in
+  BenchmarkResults ... most likely the main loop is doing something
+  weird when adding receives to a schedule... e.g. Look at all
+  following schedules... they are all saying there is only one Promise
+  sent from leader to itself... this is NOT right, I stepped through
+  the code and it does send a Promise from leader to its self and from
+  2 to leader.
+
+  _NOTE_: executing a Prepare (WRITE) doesn't produce a Promise from
+  the scheduler perspective! (doesn't reflect in the enabled set when
+  executed then lifted the adt agents' queues)
+
+  _BINGO_: the main problem if vanishing receives was Message.equals + hashCode
+  override! I removed it.
+
+  *buggy-incomplete*
+  (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+  (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+
+  (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+
+  *buggy-complete*
+  (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+  (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (ClientWriteResponse( sender = 1, method = false, payload: List(k1, 10)),IRed0)
+
+
+  *buggy-complete*
+  (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+  (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+  (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (ClientWriteResponse( sender = 1, method = false, payload: List(k1, 10)),IRed0)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+
+  *buggy-complete*
+  (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+  (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+  (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (ClientWriteResponse( sender = 1, method = false, payload: List(k1, 10)),IRed0)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+
+  *buggy-incomplete*
+  (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+  (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+
+  (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+
+  *buggy-incomplete*
+  (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+  (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+
+  (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  *buggy-complete*
+  (ProposeCommand( sender = IRed0, method = false, payload: WrappedArray(k1, 10)),1)
+  (Propose( sender = 1, method = false, payload: List(k1, 10, IRed0, WRITE)),1)
+
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Prepare( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Promise( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+
+  (Accepted( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+  (ClientWriteResponse( sender = 1, method = false, payload: List(k1, 10)),IRed0)
+
+  (Accept( sender = 1, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),2)
+  (Accepted( sender = 2, method = false, payload: List(Instance(IRed0,k1,1,WRITE,2), k1, 10)),1)
+* DONE Meeting <2021-01-08 Fri>  [6/6]
+  - [X] Reduce incomplete histories 2r+2w using SR and RR to ZERO
+  - [X] Buggy Main Loop, show proof (could be snapshot not the loop)
+  - [X] Artifact is ready (LXC Container)
+  - [X] the schedules noted -- after reducing incomplete histories #
+    on 2r+1W
+    - from 48-50/50 ----> 0 SR & RR
+    - from 37 ----> 9 in EX
+  - [X] the Message.equals
+  - [X] OC is bug-free from SR and RR-perspective on both harnesses
+        
+* DONE Meeting <2020-12-18 Fri>
+  - [X] Open Chord DHT: implemented and works, and the harness
+  - [X] new results
+  - [X] The Paxos: hooks to implement the DHT
+  - [X] Show the bug in the main loop
+
+* DONE Administrative[4/4]
+  - [X] Filling the over 7 years PhD limit work
+    - [X] a letter written by your committee chairs and the Director
+      of Graduate Studies (Zvonimir) - Template attached in the
+      email. Filled by Chairs the areas highlighted in Yellow.
+    - [X] The only form for you to fill out right now is your
+      graduation application, which can be done either through the
+      CIS or the Registrar.utah.edu website.
+    - [X] Another thing for me to do is decide upon a defense date,
+      or range of possible dates, and let Jill know.
+      
+  - [X] Kejo Hiljanko is NOT listed in the grad track (he is the
+    outside observer 5th committee memeber)
+  - [X] BACKUP benchmarking: can make the distributed register
+    benchmarks results as the following: register w/o completion,
+    register w/ completion, err register w/o completion, register w/
+    completion
+    - [X] and then the front end and other benchmarks are done: a note
+      on that: almost done with the reflections API's guide, seems
+      easier than previous versions. *NO NEED*
+  - [X] The debugging of this last issue: schedules are correctly
+    constructed, however the histories are not. *DONE*
+* DONE Meeting <2020-12-11 Fri>[5/5]
+  1. [X] *[Decide]* Paxos timed actions
+  2. [X] *[Explain]* Open Chord start sequence (make sure only) => diagram
+  3. [X] *[Explain]* Improving the harness to address a _wildcard key location_
+  4. [X] *[Decide]* Start up messaging shuffled with invocations => OK? or should add
+     a loop? *NO*
+  5. [X] *[Discovery]* LiViola harness tweaks: if asymmetric tweak => skew simulation!
+* DONE Meeting <2020-11-20 Fri>
+  - [X] Show ported Multi-Paxos and Open-Chord to DS2, still working
+    on second half of OpenChord and next Zab
+
+  - [ ] The OpenChord Harness (look at the _Main.scala_, it has everything)
+
+    - _Joining_: FindSuccessor(localNode,remoteNode)
+
+    - _updating predecessor_: pre ! UpdateFingerTable(localNode,1)
+
+    - _write a kv_: UploadEntry(x:Entry)
+
+    - _read a value_: ThisRequest(x:Request) where Request(localNode,reqID,key)
+
+
+  - [ ] Zab:
+
+    - _Write(value)_
+
+    - 
+
+
+  - [ ] Paxos: add a reaction to say ReadValue(key), that invokes
+    only the first phase of paxos (one involving Prepare, but not
+    including Accepting and learning, not to write). Then, the
+    response, after majority has prepared it, should be sent to
+    client.
+
+  - [X] Timed Actions: some aren't scheduled by specific agents, so
+    receivers are not determined... what to do? *IGNORE THEM, they
+    make no diff according to Ryan*
+  - [X] Two new algorithms: DPIR and DPLV: super slow, but what about
+    the coverage?

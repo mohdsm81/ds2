@@ -1,0 +1,1402 @@
+#    -*- mode: org -*-
+
+
+Archived entries from file /Volumes/home/mohammed/workspace/ds2/Docs/my-notes.org
+
+
+* Adding retries in the Strict distributed register implementation
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-04-19 Sun 04:20
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  In order to have complete histories.
+
+  - [X] readAction[2/2]
+    - [X] set the first round to 0
+    - [X] attach round to each msgReadReplica (second payload, idx == 1)
+  - [X] read-replica-action[1/1]
+    - [X] read register as used to be, and update the payload for the
+      ack accordingly (keeping the round attached) 
+  - [-] readReplicaAck-action[3/4]
+    - [X] check if round == local.round && sameValue
+    - [X] increment received-same-value count && count
+    - [X] if received-acks-count == peer-count && sameValueCount == received-acks-count
+      - [X] send read-ack to client
+    - [-] else if received-acks count == peer-count && received-acks-count > same-value-count
+      - [X] increment round
+      - [X] reset count && received-value-same-count
+      - [X] load new register value in cache
+      - [X] send msgReadReplica to all
+
+  *NOTE:* some conditions will chainge in majority read compared to
+  this (STRICT) read. Namely the count comparison to
+  read-same-value-count.
+
+
+Archived entries from file /Volumes/home/mohammed/workspace/ds2/Docs/my-notes.org
+
+
+* Creating a faster mechanism for snapshotting the state
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-04-19 Sun 04:20
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  Getting rid of copy/link pairs, and adding export/import method
+  pairs to export and import the "mutable" state from both
+  DistributedSystem and Agent. The remaining of the state is either
+  SchedulerState or something can be "linked" by the scheduler itself
+  at the right time (e.g. an action's 'm' and 'a' fields set before
+  the suspendable task runs). In addition, Action.runtimeCopy is
+  probably not needed anymore (and it is a costly one btw).
+
+** DistributedSystem state[5/5]
+   - [X] name: no need
+   - [X] agents: MMap[Agent.name, AgentState]; export each agent's state
+   - [X] temporaries: reference (i.e. clone the set, not strings)
+   - [X] tracingEnabled: reference
+** Agent state[16/16]
+   These are labeled *ignore* never change throughout the life of the
+   agent since creation till end of system life.
+
+   - [X] q: reference (immutable)
+   - [X] defaultBehavior: ignore
+   - [X] stash: reference (immutable)
+   - [X] reactions: ignore
+   - [X] behaviors: ignore
+   - [X] specialReactions: ignore
+   - [X] oldBehaviors: copy collection (not names of behaviors) (Stack
+     is mutable)
+   - [X] scheduler: reference
+   - [X] locked: reference
+   - [X] blocked: reference
+   - [X] consuming: reference
+   - [X] blockedOn: after copying futuresWaitingFor, get a reference
+     and place it here
+   - [X] partitionNo: reference
+   - [X] futuresPromised: copy all, make sure the scheduler can map to
+     these later on
+   - [X] futuresWaitingFor: copy all, make sure the scheduler can map
+     to these later on
+   - [X] stack: [2/2]
+     - [X] copy everything but: references to DS2-related constructs
+     - [X] check if there are items that need not be copied in order
+       to keep things light-weight.
+
+
+** Scheduler state[10/10]
+   - [X] ds: reference (the scheduler gets to decide to snapshot or
+     not), so it is NOT part of the scheduler state.
+   - [X] clk: reference
+   - [X] taskQ: copy
+   - [X] consumeQ: reference (statements get linked before they are exec)
+   - [X] blockingMgr: copy, and reference agent's futures{promised/waitingFor}
+   - [X] timedActionTracker: copy
+   - [X] traceManager: ignore
+   - [X] TimedAction
+   - [X] SuspendableTask
+
+** During Scheduler Run extra work[4/4]
+   - [X] Statement: before it executes, agent is set (message is
+OA     already set but needs linking), and *related* local state items
+     are linked. 
+   - [X] _Agents_: references stay the same all the time in different
+       snapshots after creation. *NOT NEEDED ANYMORE*.
+   - [X] _Messages_: reference only
+   - [X] Scheduling a task/timedAction, set agent
+       (ds.get(a.name)). *NOT NEEDED ANYMORE*
+
+   We still need copy and/or link for some of these.
+
+
+** Snapshot needs to replace CopyLink even on the above classes[5/5]
+   Note that the agents references NEVER change, and DS stays the same
+   ALL the time. Only its internal state changes. Hence, there is
+   absolutely no need for Copy-Link at all!!! There is only need to
+   copy what is NOT in DS2 model. Hence the following need to keep the
+   copy method, not the link:
+   - [X] _LocalState_: all *values* that are *NOT DS2 model construct* need
+     to be copied, the rest only referenced.
+   - [X] _DummyFuture_: the *value* field
+   - [X] _Message_: the entire message is a CONSTANT
+   - [X] _SuspendableTask_: itself needs be copied, everything else
+     referenced.
+   - [X] _TimedAction_: itself needs be copied, everything else
+     referenced.
+
+* Fixing TransDPOR notes[4/4]
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-04-23 Thu 03:56
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  - [X] Each time the algorithm reaches state K, it takes each message
+    'm' in the enabledSet (not exploredSet and not in backtrackingSet)
+    and does the following: For every message m in pending(κ) (Line
+    3), it considers the transition next(κ,m) for processing that
+    message. It finds the last transition i in the sequence S which is
+    in the race with next(κ,m), i.e., actor(Si) = actor(next(κ, m))
+    and i ̸→S m.
+
+    *In Brief*: in 'k' take all pending receives, find 'i'
+    (i.e. the i'th configuration k_i) for each of them that isn't
+    dependent and is directed to the same agent. If k_i's _freeze_
+    flag is set, don't update its backtracking set. Otherwise do
+    update it with ONLY ONE MESSAGE m' that satisfy the above
+    criteria. This DOES NOT include the 'current state' K.toExporeSet
+    receives. Because, the current state has NOT YET processed the
+    current receive 'r' and the algorithm is considering what is
+    next(k,r).
+    
+  - [X] If freeze (pre (S , i )) (i.e. k_i) is not set, the algorithm
+    next finds the message that should be added to backtrack(pre(S,
+    i)) *(i.e. k_i.backtrackSet)* by computing the set E (Line 5) from
+    the *messages whose transitions are enabled in pre(S, i)
+    (i.e. k_i.computeE)*. 
+    
+    *HOW?* this is how: If m is enabled in pre(S, i) (i.e. K_i) it is
+    added to E (m′ = m); otherwise a message m′ is added to E if its
+    transition is the first transition after Si that happens before m
+    (in this case, m is produced as a result of executing other
+    transitions after Si). For computing E TransDPOR differs from DPOR
+    in that it finds the minimum index j > i such that j happens
+    before m. While DPOR calculates ALL m in j > i.
+
+    *Result?* E is at max one message.
+
+  - [X] After computing E, if it contains a message that is not
+    already in backtrack(pre(S,i)), the message is added to
+    backtrack(pre(S,i)), and the freeze flag is set (Line 6).
+
+  - [X] The algorithm nondeterministically chooses an enabled message
+    from κ (Line 10) to initialize backtrack(κ) (Line 11). It then
+    processes all messages from the backtrack set that have not been
+    explored before (Line 13)
+
+* Quick detour
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-09-27 Sun 14:32
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  Make erroneous Dist. Reg. Benchmark (and related automated tests)
+  - [X] format seconds to TWO digints: String secondsTwoDigits = String.format("%02d", secondsInt);
+    - [X] in BenchmarksResults.scala
+    - [X] in MetaBenchmark.scala
+  - [X] copy, paste, and edit distributed register and make majority
+    minority (non-linearizable since some non-updated replicas will
+    leak out)
+    - [X] make majority -> minority
+    - [X] add another row to the table
+  - [X] use the *doComplete* method in BencmarkResults: wait for Ryan
+    to decide when.
+  - [X] why the *doComplete* throw *IndexOutOfBoundsException*, debug
+    it
+    - I know! the handle at the beginning of the history needs be
+      removed before completing the history, then added back if there
+      is any.
+    - Fixed by allocation "input history size *2" resultHistory array
+      instead of previously "numInvocations * 2"
+  - [X] automate the distributed register tests (5 times average)
+    - [X] the correct one
+    - [X] the erroneous
+
+
+
+* Administrative[3/4]
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-10-26 Mon 19:20
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  - [ ] Filling the over 7 years PhD limit form
+    - [ ] Check Jill's reply there are at least two items to do follow.
+    - [ ] a letter written by your committee chairs and the Director
+      of Graduate Studies (Zvonimir) - Template attached in the
+      email. Filled by Chairs the areas highlighted in Yellow.
+    - [ ] The only form for you to fill out right now is your
+      graduation application, which can be done either through the
+      CIS or the Registrar.utah.edu website.
+    - [ ] Another thing for me to do is decide upon a defense date,
+      or range of possible dates, and let Jill know.
+      
+  - [X] Kejo Hiljanko is NOT listed in the grad track (he is the
+    outside observer 5th committee memeber)
+  - [X] BACKUP benchmarking: can make the distributed register
+    benchmarks results as the following: register w/o completion,
+    register w/ completion, err register w/o completion, register w/
+    completion
+    - [X] and then the front end and other benchmarks are done: a note
+      on that: almost done with the reflections API's guide, seems
+      easier than previous versions. *NO NEED*
+  - [X] The debugging of this last issue: schedules are correctly
+    constructed, however the histories are not. *DONE*
+
+* Long TODO[0/7]
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-11-28 Sat 14:11
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  - [ ] Dissertation [0/7]
+    - [ ] cleaning
+    - [ ] add new chapter/paper
+    - [ ] multi-author release forms
+    - [ ] Published Work permission
+    - [ ] Preliminary Review
+    - [ ] Committee Approval Form
+    - [ ] Submit to Thesis Office for review
+  - [ ] Debug Dist. Reg.
+  - [ ] Harness file(s) [0/3]
+    - [ ] OpenChord
+    - [ ] Paxos
+    - [ ] Zab
+  - [ ] Run and document results
+  - [ ] Paper
+    - [ ] Evaluation Section
+    - [ ] 
+    - [ ] Conclusion
+  - [ ] Micro Auto Benchmarks, add [0/3]
+    - [ ] Paxos
+    - [ ] OpenChord
+    - [ ] Zab
+  - [ ] Implementation[0/2]
+    - [ ] Paxos: add *ReadValue(key)*
+    - [ ] debugging If-elseif-else: make sure each case skips the rest
+
+* _[ IMPORTANT ]_ making IRed and hence LV more coverage like EX
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-12-10 Thu 20:30
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  actually i can relax the causality constraint in a smart way! that
+  could lead to being more flexible but not too flexible.  when the
+  reverse traverse doesn't find a root-enabler, it simply switches to a
+  more relaxed backtracking! (e.g. like transdpor's)
+
+  it just priorities the causally consistent backtracking first in order
+  to interleave only nearest to leaves possible, without over cutting
+  interleavings that may cause missed bugs
+
+  that, will be marginal improvement of IRed over TransDPOR but it will
+  multiply nicely with LiViola's cuts that it will be significant, then
+  most likely with the (one is a write constraint) also will improve
+  cuts and not miss bugs.... makes sense?
+
+* Debugging data with Histories
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-12-10 Thu 20:30
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+
+  Harness Size: 3
+  System Name: distributed-register-majority-rw
+  # of Agents: 2
+  Scheduler: ExhaustiveDFSScheduler
+  # of Schedules: 1680
+  # of Histories: 1680
+  Total Time to generate all schedules: 0:09
+  Total Time to generate all schedules (stateless): 0:25
+  # Unique Schedules: 1680
+  # of Unique Histories: 93
+  Time to Check all Unique Histories: 0:00
+  Time to generate schedules and check unique histories (TT): 0:09
+  Time to (including) first buggy unique history: 0:00
+  # of Incomplete Histories: 1435
+  Unique Histories to #Schedules ratio: 5.54%
+  Buggy Histories to Schedules Ratio: 0.24%
+  Buggy to Unique Ratio: 4.3%
+  # Schedules till first bug: 184
+
+
+
+
+  Process finished with exit code 0
+
+
+* _[ IMPORTANT ]_ making IRed and hence LV more coverage like EX
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-12-10 Thu 20:30
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  actually i can relax the causality constraint in a smart way! that
+  could lead to being more flexible but not too flexible.  when the
+  reverse traverse doesn't find a root-enabler, it simply switches to a
+  more relaxed backtracking! (e.g. like transdpor's)
+
+  it just priorities the causally consistent backtracking first in order
+  to interleave only nearest to leaves possible, without over cutting
+  interleavings that may cause missed bugs
+
+  that, will be marginal improvement of IRed over TransDPOR but it will
+  multiply nicely with LiViola's cuts that it will be significant, then
+  most likely with the (one is a write constraint) also will improve
+  cuts and not miss bugs.... makes sense?
+
+* Debugging data with Histories
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-12-10 Thu 20:31
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, CC40, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed2,read,List()) ()
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed1,read,List()) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed1,read,List(1))
+  Response(<<<(,0,0), []>>>,Some(k),IRed2,read,List(1))
+  Invocation(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1)) ()
+  Response(<<<(,0,0), []>>>,Some(k),IRed0,write,List(1))
+
+  (read( sender = IRed2, method = false, payload: WrappedArray(k)),dude0)
+  (read( sender = IRed1, method = false, payload: WrappedArray(k)),dude1)
+  (msgReadReplica( sender = dude0, method = false, payload: List(k, 0, 7B34, IRed2)),dude1)
+  (msgReadReplica( sender = dude1, method = false, payload: List(k, 0, 98EB, IRed1)),dude0)
+  (msgReadReplicaAck( sender = dude0, method = false, payload: List(1, 0, 98EB, IRed1)),dude1)
+  (readAck( sender = dude1, method = false, payload: List(k, 1)),IRed1)
+  (msgReadReplicaAck( sender = dude1, method = false, payload: List(1, 0, 7B34, IRed2)),dude0)
+  (readAck( sender = dude0, method = false, payload: List(k, 1)),IRed2)
+  (write( sender = IRed0, method = false, payload: WrappedArray(k, 1)),dude0)
+  (replication( sender = dude0, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude1)
+  (replicationAck( sender = dude1, method = false, payload: List(k, 1, 0, 4291, IRed0)),dude0)
+  (writeAck( sender = dude0, method = false, payload: List(k, 1)),IRed0)
+  ----------------------------------------------------------------------------
+
+  Harness Size: 3
+  System Name: distributed-register-majority-rw
+  # of Agents: 2
+  Scheduler: ExhaustiveDFSScheduler
+  # of Schedules: 1680
+  # of Histories: 1680
+  Total Time to generate all schedules: 0:09
+  Total Time to generate all schedules (stateless): 0:25
+  # Unique Schedules: 1680
+  # of Unique Histories: 93
+  Time to Check all Unique Histories: 0:00
+  Time to generate schedules and check unique histories (TT): 0:09
+  Time to (including) first buggy unique history: 0:00
+  # of Incomplete Histories: 1435
+  Unique Histories to #Schedules ratio: 5.54%
+  Buggy Histories to Schedules Ratio: 0.24%
+  Buggy to Unique Ratio: 4.3%
+  # Schedules till first bug: 184
+
+
+
+
+  Process finished with exit code 0
+
+
+* Long TODO[4/11]
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-12-10 Thu 20:33
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+
+  - [-] Open Chord[2/4]
+    - [ ] Start sequence[0/2]
+      - [ ] _Joining_: FindSuccessor(localNode,remoteNode)
+	*Notes:* [[https://medium.com/techlog/chord-building-a-dht-distributed-hash-table-in-golang-67c3ce17417b][src]]. The following tasks should be done for a newly
+        joined node:
+	1. Initialize node n (the predecessor and the finger table).
+	2. Notify other nodes to update their predecessors and finger
+           tables.
+        3. The new node takes over its responsible keys from its
+           successor.
+	   
+	*The stabilization protocol works as follows:* To ensure
+        correct lookups, all successor pointers must be up to
+        date. Therefore, a stabilization protocol is running
+        periodically in the background which updates finger tables and
+        successor pointers.
+
+	1. Stabilize(): n asks its successor for its predecessor p and
+           decides whether p should be n‘s successor instead (this is
+           the case if p recently joined the system).
+	2. Notify(): notifies n‘s successor of its existence, so it
+           can change its predecessor to n
+	3. Fix_fingers(): updates finger tables/*
+	4. *no need* check_predecessor(): Periodically checks if
+           predecessor is alive
+
+      - [ ] _updating predecessor_: pre !
+        UpdateFingerTable(localNode,1)
+	1. 
+    - [ ] makeHarnessFile impl 
+      - [ ] *UploadEntry(x:Entry)* => UploadEntry(id1: ID, k: String, v: Serializable)
+      - [ ] *ThisRequest(r:Request)* => ThisRequest(node: Node, id:
+        String, key: ID)
+    - [X] flatten the following messages and their reactions[2/2]
+      - [X] *UploadEntry(x:Entry)* => UploadEntry(id1: ID, k: String, v: Serializable)
+      - [X] *ThisRequest(r:Request)* => ThisRequest(node: Node, id: String, key: ID)
+    - [X] make a global var in agent call it "spec$$Map[Any,Any]" to
+      represent "entries" (this is the initial SPEC, which is
+      empty). There is a note with this regard in *ChordDS2System*.
+
+  - [-] Paxos[1/3]
+    - [ ] Paxos: add *ReadValue(key)* (if needed) (propose with accept
+      is the write, while propose without write is a read)
+    - [ ] start sequence
+    - [X] makeHarnessFile impl [1/1]
+      - 
+      - [X] flatten ProposalID (to get the key directly in the payload)
+  - [-] Zab [3/4]
+    - [X] getInstance impl
+    - [X] makeAgent impl
+    - [X] start seq (check ZabDS2Agent.scala for notes)
+    - [ ] makeHarnessFile impl[0/2]
+      - [ ] what is a read? 
+      - [ ] what is a write? _Write(value)_
+
+
+  - [-] improve algorithm input(s)[2/3]
+    - [ ] Improve parsing the harness to indicate a wild card for keys
+      locations (and consider that wild card includes ALL keys)
+    - [X] add one more map/set to indicate an overlap of a
+      "r/w"-related messaging (like it is the case with Paxos) use "b"
+      for "both". Also, add that parsing support to the file
+      harness-parser
+    - [X] re-enable one-is-a-write condition and test it (can disable
+      in case it lead to missed bugs)
+  
+
+  - [ ] Run and document results[0/3]
+    - [ ] OpenChord[0/2]
+      - [ ] 3 invocations
+      - [ ] 4 invocations
+    - [ ] Paxos[0/2]
+      - [ ] 3 invocations
+      - [ ] 4 invocations
+    - [ ] Zab[0/2]
+      - [ ] 3 invocations
+      - [ ] 4 invocations
+  - [-] Paper[1/3]
+    - [X] Evaluation Section =>
+      - [X] Metrics:
+	- _NL/UH_: *QUALITY* of unique histories (that are effective at
+          catching a bug) 
+	- _UH/S_: *PROGRESSION* rough estimation/measure that the scheduler is
+          making progress exploring new schedules faster/slower
+	- _NL/S_: *PRECISION* of schedules generated that target bugs
+	- _UH_: *LESS-REPETITIVENESS* this is a rough estimation that the scheduler is
+          exploring more unexplored schedules before.
+	- _ST_: stateless (total rerun of the system) time to generate
+          all schedules. It is always bigger than stateful time except
+          in SR case, since the stateful involves restoring the state
+          of the system using the snapshot at the end of each
+          schedule, to start the next schedule while that isn't taken
+          into account in a stateless algorithm.
+	- All others are explained clearly at the footer of Table 1.
+      - [X] Eval introduction:[2/2]
+	- [X] SR is fastest but least effective (if at all) and given
+          twice as many schedules as threshold/cutoff.
+	- [X] It never found bugs, but always found good amount of
+          unique histories. So we won't include it in the comparison
+          with other algorithms, the user is free to check the numbers
+          instead.
+      - [X] Eval DR notes[3/3]
+	- [X] _EX + DB_: did a lot alike with negligible differences
+          on all aspects.
+	- [X] _DP+TD+IR_: did very similarly but definitely better
+          than EX+DB. IR and TD showed some improvement over
+          DP. However, IR didn't show any improvements over TD because
+          this implementation is strongly causally consistent, and
+          hence IR doesn't get an advantage over TD's
+          over-approximation of the root enabler, and hence TD
+          represents the worst case scenario for IR. This isn't always
+          the case as we will see in later benchmark(s).
+	- [X] _LV_: regardless of the fact that LV performance
+          numbers, theoretically speaking, should have been exactly
+          like IR since it is a one-key and LV shares the same precise
+          causality tracking with IR. LV enables the developer to
+          tweak the harness to indicate which messages are the focus
+          in the exploration (i.e. interfering with each other on the
+          shared target state, directly or indirectly) which lead to
+          astonishing numbers; it didn't even approach the cutoff on
+          the 4-invocations test. In this implementation the symmetric
+          replica acks to the leader (on both reads and writes) don't
+          cause any change at the leader nor cause further
+          interference before they are reported as a response to a
+          client in the final history. Developers should practice
+          caution using this feature as we will see why in the next
+          benchmark.
+      - [X] Eval EDR notes[3/3]
+	- [X] _EX+DB_: again they performed similarly as in the first
+          benchmark except for this one, there are bugs caught.
+	- [X] _DP+TD_: also did mostly the same except for few
+          differences on the 3 invocation test. DP produced better quality
+          unique histories to catch bugs as indicated by
+          NL/UH and it was more precise as indicated by NL/S but TD
+          was significantly faster at making progress towards unique
+          schedules (that potentially may reveal bgs) than DP.
+	- [X] _IR+LV_: IR and LV were the best of the algorithms in
+          this benchmark, also.  However they performed exactly the
+          same except LV for some reason scored much faster times than
+          IR. This is the theoretical upper bound for LV being IR that
+          we theorized.
+	  *NOTE:* This specific benchmark, when we over tweaked the
+          harness, LV outperformed every one by a large margine in the
+          first 3-invocations test. However, when we used the same
+          over-tweaked harness for the second test, it missed all bugs
+          by a big margin and it pre-maturely terminated at a bit over
+          10K schedules stating it didn't find bugs. So, we reverted
+          these tweaks and passed a plain harness. This is an example
+          why developers should practice caution when tweaking the
+          harness fed to LV based on the logic of their implementation
+          and their insight into the problem at hand,
+          i.e. linearizability checking.
+      - [X] Eval OpenChord: left for reader to infer from the table
+      - [X] Eval Paxos:left for reader to infer from the table
+      - [X] Eval Zab:left for reader to infer from the table
+    - [ ] Conclusion
+    - [ ] Recognition
+  - [ ] Dissertation [0/7]
+    - [ ] cleaning
+    - [ ] add new chapter/paper
+    - [ ] multi-author release forms
+    - [ ] Published Work permission
+    - [ ] Preliminary Review
+    - [ ] Committee Approval Form
+    - [ ] Submit to Thesis Office for review
+
+
+  - [X] NEW Register implementation[3/3]
+    - [X] re-run the two benchmark rows[8/8]
+      should I use 3 or 2 runs instead of 5? *3 times each*
+      - [X] 3 receives EDR
+      - [X] 4 receives EDR
+      - [X] 3 receives DR -- after fixing the harness tweak
+      - [X] 4 receives DR -- after fixing the harness tweak
+      - [X] Repeat 3 receives DR  - LV with no-acks shuffling harness
+      - [X] Repeat 3 receives EDR - LV with no-acks (except the write
+        ack since it does affect the target state in the
+        leader/originator) shuffling harness
+      - [X] Repeat 4 receives DR  - LV with harness tweaks
+      - [X] Repeat 4 receives EDR - LV with harness tweaks
+    - [X] Debug the casting exceptions
+    - [X] Debug the weird bugs[4/4]
+      - [X] FIX the ReadReplica to be sent to have the client in the payload if
+        originally forwarded by the other peers
+      - [X] Fix the "reachedMajority", it could be too strict to have
+        gt. It works, wasn't broken.
+      - [X] fix the *trackersContain(mm.client, write = false)*
+        returning false when it should return true. *BECAUSE* there is
+        NOTHING in the *READS_TRACKER* map!!! *ALSO: the bug wasn't
+        this*, see next item.
+      - [X] the readAcktion was adding trackers to the
+        *WRITES_TRACKER* map. Fix: now read action adds to
+        *READS_TRACKER* map.
+  - [X] Dist. Reg.[5/5]
+    - [X] msgReadReplicaAck 
+      doesn't have a "key" in the payload, no wonder LV misses bugs!!!
+    - [X] run and see if LV finds bugs
+
+      *the 3-receives harness results*
+      Harness Size: 3
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: LiViolaScheduler
+      # of Schedules: 146
+      # of Histories: 146
+      Total Time to generate all schedules: 0:00
+      Total Time to generate all schedules (stateless): 0:02
+      # Unique Schedules: 146
+      # of Unique Histories: 7
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 0:00
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 146
+      Unique Histories to #Schedules ratio: 4.79%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+      
+      *the 4-receives harness results:*
+      hits the 50K cut off and finds no bugs
+    - [X] Copy that and reduce the quorum to form the buggy one
+    - [X] Debug - make linearizable: Just adding the key "k" to the
+      msgReadReplicaAck fixed it (made the alg count things correctly)
+      
+      *The three receives harness results:*
+
+      Harness Size: 3
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: ExhaustiveDFSScheduler
+      # of Schedules: 1680
+      # of Histories: 1680
+      Total Time to generate all schedules: 0:05
+      Total Time to generate all schedules (stateless): 0:19
+      # Unique Schedules: 1680
+      # of Unique Histories: 16
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 0:05
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 1680
+      Unique Histories to #Schedules ratio: 0.95%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+
+      *and the 4-receives harness results:*
+      Harness Size: 4
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: ExhaustiveDFSScheduler
+      # of Schedules: 50000
+      # of Histories: 50000
+      Total Time to generate all schedules: 16:17
+      Total Time to generate all schedules (stateless): 41:45
+      # Unique Schedules: 50000
+      # of Unique Histories: 31
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 16:17
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 50000
+      Unique Histories to #Schedules ratio: 0.06%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+    - [X] Debug again 
+      
+      _Reason_: all histories are incomplete!  *fixed and now it is NOT
+      linearizable* since now there are retries.
+
+      _NOTES_: In the Dist. Reg. Benchmarks, LiViola shouldn't exceed
+      IRed, at least not by much if any. (single key). In the other
+      benchmarks however (since they are capable of multi-key), it
+      could exceed all of them by a significant margin (say two writes
+      to diff keys, and the reads to one key to reveal
+      violations... this is more like the 3-receive thing).      
+  - [X] Micro Auto Benchmarks, add [3/3]
+    - [X] Paxos
+    - [X] OpenChord
+    - [X] Zab
+  - [X] Model[2/2]
+    - [X] debugging If-elseif-else: make sure each case skips the rest
+    - [X] add support to Behavior to receive a message and discard it:
+      by returning an empty Action instead of throwing an exception
+
+* Long task list [6/9]
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2020-12-23 Wed 21:51
+  :ARCHIVE_FILE: ~/workspace/ds2/Docs/my-notes.org
+  :ARCHIVE_CATEGORY: my-notes
+  :END:
+
+  - [ ] debug EX main loop[0/4]
+    It is the reason we see all these incomplete histories. It could
+    be any of the following:
+    - [ ] *Main suspicion* a two invocations schedule/history only!
+      without any other thing with them?! /not a single implementation
+      works/behaves this way./
+    - [ ] A set gets computed wrong
+    - [ ] a capture that is too early
+    - [ ] not removing already executed receive from some one's queue
+
+  - [-] Paxos[5/7]
+    - [X] re-write it in cleaner way (he was using too many things
+      that don't actually work)
+    - [X] WRITE acceptance flow
+    - [X] nackAction impl
+    - [-] READ variants of the actions impl[1/3]
+      - [X] requestAction
+      - [ ] prepareAction
+      - [ ] promiseAction
+
+    - [ ] Instance.equals re-implementation (not all fields are needed
+      to identify proposals)
+
+    - NOTES:[2/2]
+      - [X] Why prepareAction reads from "logs" instead of
+        "learned_values"? Yes, logs are in-progress WRITE
+        requests. for READ's, learned_proposals are read =Map[key->
+        value]=
+      - [X] still need to do the READ part of "prepareAction" and
+        "promiseAction"
+    - [X] start sequence
+    - [X] makeHarnessFile impl [2/2]
+      - [X] Read: =Reques= (first phase)
+      - [X] Write: =ProposeCommand= (two phases)
+
+
+  - [-] Zab [3/4]
+    - [ ] makeHarnessFile impl[0/2]
+      - [ ] what is a read? 
+      - [ ] what is a write? =Write(k,value)=
+    - [X] getInstance impl
+    - [X] makeAgent impl
+    - [X] start seq (check ZabDS2Agent.scala for notes)
+
+
+  - [X] Open Chord[5/5]
+    - [X] makeHarnessFile impl [NEW][2/2]
+      - [X] =UploadEntry(x:Entry)= where =UploadEntry(id1: ID, k:
+        String, v: Serializable)= is =Message("UploadEntry", Seq(k,v))=
+      - [X] =Request(r:Request)= where =Request(node: Node, id:String,
+        key: ID)= is =Message("Request", Seq(k))=
+    - [X] makeHarnessFile impl
+      - use =val id = HashFunction.createID(k.getBytes)= where =k= is
+        for =ThisRequest(... id...)= and use
+        =ChordImpl.makeRequestID()= for =Request(...reqID...)=
+      - [X] =UploadEntry(x:Entry)= where =UploadEntry(id1: ID, k: String, v: Serializable)=
+      - [X] =ThisRequest(r:Request)= where =ThisRequest(node: Node, id:String, key: ID)=
+      - NOTES: 
+	create an =Entry= with id = HashFunction.createID(key) (from
+        Main.scala). 
+
+       *Problem1:* On the text level (harness file) just paste the
+        rest of the message payload to be the =Array[Byte]= that
+        represents the id1 field of =ID= class. In the reaction, take
+        the tail after the =k= and =value= and create a runtime =ID=
+        instance. Use that instead of accessing the direct =Message=
+        created by the harness/scheduler. This way we lift a bench of
+        bytes into =Array[Byte]= and in turn into =ID=. Wrap the
+        =Entry= that is created and send it to the agent as
+        =UploadEntry(e:Entry)=. Do the same for =ThisRequest(req:
+        Request(node,id:String,key:ID))= except that Request.id is a
+        string generated by this code:
+	#+BEGIN_SRC scala
+	private def makeRequestID():String = System.currentTimeMillis().toString() +"_"+counter
+	// like the following
+	var reqID = makeRequestID()
+	val req = new Request(this.localNode, reqID, key)
+	#+END_SRC
+
+	_Another idea (will have to write some code to generate
+        that)_: create all that programatically, serialize to bytes,
+        then parse these bytes to a full object message! (use the IO._
+        functions) before even you launch the scheduler... that is,
+        put the bytes in the harness itself... as the payload of
+        =UploadEntry= and =ThisRequest=.
+
+	*Problem2:* responses accumulate at the requesting agent.
+
+	*Better soln for both problems 1 & 2:* use regular k-v at the
+        harness level, and let the actions in the actors to deal with
+        creating ID's per request. Also, add a method
+        Responses.receive(....) that maps the original client & key
+        they requested (and value in case of a write) that sent the
+        request with the ID generated so that a proper Response is
+        sent out to the client to form a complete history. Same goes
+        for "entries" written of course (the table). When it is
+        written, the client has to be notified.	
+    - [X] Start sequence[1/1]
+      - [X] _Joining_: =FindSuccessor(localNode,remoteNode)=
+	*Notes:* [[https://medium.com/techlog/chord-building-a-dht-distributed-hash-table-in-golang-67c3ce17417b][src]]. The following tasks should be done for a newly
+        joined node:
+	1. Initialize node n (the predecessor and the finger table).
+	2. Notify other nodes to update their predecessors and finger
+           tables.
+        3. The new node takes over its responsible keys from its
+           successor.
+	   
+	*The stabilization protocol works as follows:* To ensure
+        correct lookups, all successor pointers must be up to
+        date. Therefore, a stabilization protocol is running
+        periodically in the background which updates finger tables and
+        successor pointers.
+
+	1. =Stabilize()=: n asks its successor for its predecessor p and
+           decides whether p should be n‘s successor instead (this is
+           the case if p recently joined the system).
+	2. =Notify()=: notifies n‘s successor of its existence, so it
+           can change its predecessor to n
+	3. =Fix_fingers()=: updates finger tables/*
+	4. *no need* check_predecessor(): Periodically checks if
+           predecessor is alive
+    - [X] flatten the following messages and their reactions[2/2]
+      - [X] =UploadEntry(x:Entry)= => UploadEntry(id1: ID, k: String, v: Serializable)
+      - [X] =ThisRequest(r:Request)= => ThisRequest(node: Node, id: String, key: ID)
+    - [X] make a global var in agent call it "spec$$Map[Any,Any]" to
+      represent "entries" (this is the initial SPEC, which is
+      empty). There is a note with this regard in *ChordDS2System*.      
+  - [X] improve algorithm input(s)[3/3]
+    - [X] Improve parsing the harness to indicate a wild card for keys
+      locations (and consider that wild card includes ALL keys)
+    - [X] add one more map/set to indicate an overlap of a
+      "r/w"-related messaging (like it is the case with Paxos) use "b"
+      for "both". Also, add that parsing support to the file
+      harness-parser
+    - [X] re-enable one-is-a-write condition and test it (can disable
+      in case it lead to missed bugs)
+  - [X] NEW Register implementation[3/3]
+    - [X] re-run the two benchmark rows[8/8]
+      should I use 3 or 2 runs instead of 5? *3 times each*
+      - [X] 3 receives EDR
+      - [X] 4 receives EDR
+      - [X] 3 receives DR -- after fixing the harness tweak
+      - [X] 4 receives DR -- after fixing the harness tweak
+      - [X] Repeat 3 receives DR  - LV with no-acks shuffling harness
+      - [X] Repeat 3 receives EDR - LV with no-acks (except the write
+        ack since it does affect the target state in the
+        leader/originator) shuffling harness
+      - [X] Repeat 4 receives DR  - LV with harness tweaks
+      - [X] Repeat 4 receives EDR - LV with harness tweaks
+    - [X] Debug the casting exceptions
+    - [X] Debug the weird bugs[4/4]
+      - [X] FIX the ReadReplica to be sent to have the client in the payload if
+        originally forwarded by the other peers
+      - [X] Fix the "reachedMajority", it could be too strict to have
+        gt. It works, wasn't broken.
+      - [X] fix the *trackersContain(mm.client, write = false)*
+        returning false when it should return true. *BECAUSE* there is
+        NOTHING in the *READS_TRACKER* map!!! *ALSO: the bug wasn't
+        this*, see next item.
+      - [X] the readAcktion was adding trackers to the
+        *WRITES_TRACKER* map. Fix: now read action adds to
+        *READS_TRACKER* map.
+  - [X] Dist. Reg.[5/5]
+    - [X] msgReadReplicaAck 
+      doesn't have a "key" in the payload, no wonder LV misses bugs!!!
+    - [X] run and see if LV finds bugs
+
+      *the 3-receives harness results*
+      Harness Size: 3
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: LiViolaScheduler
+      # of Schedules: 146
+      # of Histories: 146
+      Total Time to generate all schedules: 0:00
+      Total Time to generate all schedules (stateless): 0:02
+      # Unique Schedules: 146
+      # of Unique Histories: 7
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 0:00
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 146
+      Unique Histories to #Schedules ratio: 4.79%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+      
+      *the 4-receives harness results:*
+      hits the 50K cut off and finds no bugs
+    - [X] Copy that and reduce the quorum to form the buggy one
+    - [X] Debug - make linearizable: Just adding the key "k" to the
+      msgReadReplicaAck fixed it (made the alg count things correctly)
+      
+      *The three receives harness results:*
+
+      Harness Size: 3
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: ExhaustiveDFSScheduler
+      # of Schedules: 1680
+      # of Histories: 1680
+      Total Time to generate all schedules: 0:05
+      Total Time to generate all schedules (stateless): 0:19
+      # Unique Schedules: 1680
+      # of Unique Histories: 16
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 0:05
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 1680
+      Unique Histories to #Schedules ratio: 0.95%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+
+      *and the 4-receives harness results:*
+      Harness Size: 4
+      System Name: distributed-register-majority-rw-FINAL-VERSION
+      # of Agents: 2
+      Scheduler: ExhaustiveDFSScheduler
+      # of Schedules: 50000
+      # of Histories: 50000
+      Total Time to generate all schedules: 16:17
+      Total Time to generate all schedules (stateless): 41:45
+      # Unique Schedules: 50000
+      # of Unique Histories: 31
+      Time to Check all Unique Histories: 0:00
+      Time to generate schedules and check unique histories (TT): 16:17
+      Time to (including) first buggy unique history: 0:00
+      # of Incomplete Histories: 50000
+      Unique Histories to #Schedules ratio: 0.06%
+      Buggy Histories to Schedules Ratio: 0.0%
+      Buggy to Unique Ratio: 0.0%
+      # Schedules till first bug: -1
+    - [X] Debug again 
+      
+      _Reason_: all histories are incomplete!  *fixed and now it is NOT
+      linearizable* since now there are retries.
+
+      _NOTES_: In the Dist. Reg. Benchmarks, LiViola shouldn't exceed
+      IRed, at least not by much if any. (single key). In the other
+      benchmarks however (since they are capable of multi-key), it
+      could exceed all of them by a significant margin (say two writes
+      to diff keys, and the reads to one key to reveal
+      violations... this is more like the 3-receive thing).      
+  - [X] Micro Auto Benchmarks, add [3/3]
+    - [X] Paxos
+    - [X] OpenChord
+    - [X] Zab
+  - [X] Model[2/2]
+    - [X] debugging If-elseif-else: make sure each case skips the rest
+    - [X] add support to Behavior to receive a message and discard it:
+      by returning an empty Action instead of throwing an exception
+
