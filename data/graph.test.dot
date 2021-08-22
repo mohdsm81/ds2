@@ -1,0 +1,6 @@
+digraph graph_to_help_debug {
+	"SPEC = 
+ " -> "SPEC = 
+ Some(1) -> x 1 0 y" [label = "(0) - -1. I => Some(1) :append x 1 0 y
+(L = true, C = true)"]
+}
