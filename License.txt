@@ -1,5 +1,5 @@
 Declarative Specification of Distributed Systems - DS2 © 2021 by Mohammed S. Al-Mahfoudh, Ryan Stutsman, Ganesh Gopalakrishnan (The University of Utah) is licensed under CC BY-NC-SA 4.0 
 
 For commercial licensing/arrangements, please contact one of the following:
-Mohammed S. Al-Mahfoudh <mahfoudh@cs.utah.edu>
+Mohammed S. Al-Mahfoudh <mohammed.mahfoudh@mail.com>
 Ryan Stutsman <stutsman@cs.utah.edu>
